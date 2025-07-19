@@ -1,12 +1,7 @@
 ﻿// JsonParser.cs
-using MayhemFamiliar;
 using MayhemFamiliar.QueueManager;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace MayhemFamiliar
 {
@@ -80,6 +75,13 @@ namespace MayhemFamiliar
     }
     static class Key
     {
+        public const string AbilityGrpId = "abilityGrpId";
+        public const string ActionType = "actionType";
+        public const string AffectedIds = "affectedIds";
+        public const string AffectorId = "affectorId";
+        public const string Annotations = "annotations";
+        public const string Category = "category";
+        public const string Details = "details";
         public const string DiffDeletedInstanceIds = "diffDeletedInstanceIds";
         public const string GameInfo = "gameInfo";
         public const string GameObjects = "gameObjects";
@@ -90,14 +92,24 @@ namespace MayhemFamiliar
         public const string GrpId = "grpId";
         public const string InstanceId = "instanceId";
         public const string Name = "name";
+        public const string NewId = "new_id";
         public const string ObjectInstanceIds = "objectInstanceIds";
+        public const string OrigId = "orig_id";
         public const string Stage = "stage";
         public const string TransactionId = "transactionId";
         public const string Type = "type";
+        public const string ValueInt32 = "valueInt32";
+        public const string ValueString = "valueString";
         public const string ZoneId = "zoneId";
         public const string Zones = "zones";
+        public const string ZoneDest = "zone_dest";
+        public const string ZoneSrc = "zone_src";
     }
-    public static class  Phase
+    public static class ZoneTransferCategory
+    {
+        public const string PlayLand = "PlayLand";
+    }
+    public static class Phase
     {
         public const string Beginning = "Phase_Beginning";
         public const string Main = "Phase_Main";
@@ -149,11 +161,20 @@ namespace MayhemFamiliar
         private CardData _cardData;
         private TurnInfo _turnInfo = new TurnInfo();
         private int _gameStateId = 0;
+        private readonly Dictionary<int, string> _UserActions;
+        private readonly Dictionary<int, string> _Affectors;
 
         public JsonParser(Action<string> log, string cardDatabaseDirectoryPath = "")
         {
             _log = log;
             _gameObjects = new Dictionary<int, GameObject>();
+
+            _UserActions[3] = "PlayLand";
+            _UserActions[3] = "Tap";
+
+            _Affectors[1] = "You";
+            _Affectors[2] = "Opponent";
+
             if (!String.IsNullOrEmpty(cardDatabaseDirectoryPath))
             {
                 _cardDatabaseDirectoryPath = cardDatabaseDirectoryPath;
@@ -257,8 +278,6 @@ namespace MayhemFamiliar
         private void ProcesseGameStateTypeFullMessage(JToken message)
         {
 
-            // TODO
-
             _gameStateId = (int)message[Key.GameStateId];
 
             // ゲーム開始連絡
@@ -282,10 +301,59 @@ namespace MayhemFamiliar
             // gameObjectsの処理（gameObjectsにoiidを登録、更新）
             processGameObjects(message[Key.GameObjects].ToArray() ?? Array.Empty<JToken>());
 
+            // annotationsの処理
+            processAnnotations(message[Key.Annotations]?.ToArray() ?? Array.Empty<JToken>());
+
             // ゲーム終了連絡
             if (message[Key.GameInfo]?[Key.Stage]?.ToString() == GameStage.GameOver)
             {
                 _log?.Invoke("JsonParser: ゲーム終了");
+            }
+        }
+
+        private void processAnnotations(IList<JToken> annotations)
+        {
+            foreach (var annotation in annotations)
+            {
+                // TODO
+                switch (annotation[Key.Type]?[0]?.ToString())
+                {
+                    case AnnotationType.ObjectIdChanged
+                        when annotation[Key.Details] is not null:
+                        {
+                            // オブジェクトIDの変更
+                            int origId = (int)annotation[Key.Details][0][Key.ValueInt32][0];
+                            int newId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
+                            _gameObjects[newId] = new GameObject(_gameObjects[origId].ZoneId, _gameObjects[origId].GrpId, _gameObjects[origId].Name);
+                            break;
+                        }
+                    case AnnotationType.ZoneTransfer
+                        when annotation[Key.Details] is not null:
+                        {
+                            // ゾーンの移動
+                            int affectedId = (int)annotation[Key.AffectedIds][0];
+                            int zoneSrcId = (int)annotation[Key.Details][0][Key.ValueInt32][0];
+                            int zoneDestId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
+                            string zoneTransferCategory = annotation[Key.Details][2][Key.ValueInt32][0].ToString();
+                            if (_gameObjects.ContainsKey(affectedId))
+                            {
+                                _gameObjects[affectedId].ZoneId = zoneDestId;
+                            }
+                            _log?.Invoke($"JsonParser: {zoneTransferCategory} {_gameObjects[affectedId].Name}");
+                            break;
+                        }
+                    case AnnotationType.UserActionTaken
+                        when annotation[Key.Details] is not null:
+                        {
+                            // ユーザアクション
+                            string affector = _Affectors[(int)annotation[Key.AffectorId]];
+                            int affectedId = (int)annotation[Key.AffectedIds][0];
+                            int actionType = (int)annotation[Key.Details][0][Key.ValueInt32][0];
+                            int abilityGrpId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
+                            // TODO
+                            break;
+                        }
+                }
             }
         }
 
