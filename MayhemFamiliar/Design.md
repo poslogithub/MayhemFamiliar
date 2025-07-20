@@ -48,3 +48,24 @@
 * 手札からのカード追放
 * 攻撃
 * ブロック
+
+# 発話条件
+
+以下、messageは `json["greToClientEvent"]["greToClientMessages"]["gameStateMessage"]を指す。
+
+## ゲームの開始
+
+`message["gameInfo"]["stage"] == GameStage_Start` で発話
+
+## ゲームの終了
+
+`message["gameInfo"]["stage"] == GameStage_GameOver` で発話
+
+## ターンの開始
+
+* `message["turnInfo"]` を記録しておき、
+* 記録していた `message["turnInfo"]["phase"]` が `Phase_Beginning` ではなく、
+* 新しい `message["turnInfo"]["phase"]` が `Phase_Beginning` であれば発話する。
+
+## ドロー
+
