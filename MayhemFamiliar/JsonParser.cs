@@ -39,6 +39,12 @@ namespace MayhemFamiliar
         public const int OpponentsLibrary = 36;
         public const int OpponentsGraveyard = 37;
         public const int OpponentsSideboard = 38;
+        public static List<int> YourZones = [
+            YourRevealed, YourHand, YourLibrary, YourGraveyard, YourSideboard
+        ];
+        public static List<int> OpponentsZones = [
+            OpponentsRevealed, OpponentsHand, OpponentsLibrary, OpponentsGraveyard, OpponentsSideboard
+        ];
     }
     static class GreMessageType
     {
@@ -108,6 +114,10 @@ namespace MayhemFamiliar
     public static class ZoneTransferCategory
     {
         public const string PlayLand = "PlayLand";
+        public const string Mill = "Mill";
+        public const string Resolve = "Resolve";
+        public const string CastSpell = "CastSpell";
+        public const string Draw = "Draw";
     }
     public static class Phase
     {
@@ -170,8 +180,9 @@ namespace MayhemFamiliar
             _gameObjects = new Dictionary<int, GameObject>();
 
             _UserActions[3] = "PlayLand";
-            _UserActions[3] = "Tap";
+            _UserActions[4] = "Tap";
 
+            _Affectors[1] = "Unknown";
             _Affectors[1] = "You";
             _Affectors[2] = "Opponent";
 
@@ -335,11 +346,28 @@ namespace MayhemFamiliar
                             int zoneSrcId = (int)annotation[Key.Details][0][Key.ValueInt32][0];
                             int zoneDestId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
                             string zoneTransferCategory = annotation[Key.Details][2][Key.ValueInt32][0].ToString();
+                            string affector;
+                            if (ZoneId.YourZones.Contains(zoneSrcId) && ZoneId.YourZones.Contains(zoneDestId)) 
+                            {
+                                affector = _Affectors[1]; // あなた
+                            } 
+                            else if (ZoneId.OpponentsZones.Contains(zoneSrcId) && ZoneId.OpponentsZones.Contains(zoneDestId))
+                            {
+                                affector = _Affectors[2]; // 相手
+                            } 
+                            else
+                            {
+                                affector = _Affectors[0]; // 不明
+                            }
                             if (_gameObjects.ContainsKey(affectedId))
                             {
                                 _gameObjects[affectedId].ZoneId = zoneDestId;
                             }
-                            _log?.Invoke($"JsonParser: {zoneTransferCategory} {_gameObjects[affectedId].Name}");
+                            _log?.Invoke($"JsonParser: {affector} {zoneTransferCategory} {_gameObjects[affectedId].Name}");
+                            // TODO: ドローや土地のプレイや呪文のキャストはここで処理
+                            EventQueue.Queue.Enqueue(
+                                $"{affector} {zoneTransferCategory} {_gameObjects[affectedId].Name}"
+                            );
                             break;
                         }
                     case AnnotationType.UserActionTaken
@@ -351,6 +379,16 @@ namespace MayhemFamiliar
                             int actionType = (int)annotation[Key.Details][0][Key.ValueInt32][0];
                             int abilityGrpId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
                             // TODO
+                            switch (actionType)
+                            {
+                                case 3: // PlayLand
+                                    _log?.Invoke($"JsonParser: {affector} {ZoneTransferCategory.PlayLand} {_gameObjects[affectedId].Name}");
+                                    break;
+                                case 4: // Tap
+                                    _log?.Invoke($"JsonParser: {affector} Tap {_gameObjects[affectedId].Name}");
+                                    break;
+                            }
+
                             break;
                         }
                 }
