@@ -2,6 +2,7 @@
 using MayhemFamiliar.QueueManager;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 
 namespace MayhemFamiliar
 {
@@ -63,6 +64,12 @@ namespace MayhemFamiliar
     static class GameObjectType
     {
         public const string Card = "GameObjectType_Card";
+        public const string Ability = "GameObjectType_Ability";
+        public const string Token = "GameObjectType_Token";
+        public const string MDFCBack = "GameObjectType_MDFCBack";
+        public static List<string> NamableObjectTypes = [
+            Card, Token
+        ];
     }
     static class GameStage
     {
@@ -78,6 +85,8 @@ namespace MayhemFamiliar
         public const string UserActionTaken = "AnnotationType_UserActionTaken";
         public const string EnteredZoneThisTurn = "AnnotationType_EnteredZoneThisTurn";
         public const string ColorProduction = "AnnotationType_ColorProduction";
+        public const string ResolutionStart = "AnnotationType_ResolutionStart";
+        public const string ResolutionComplete = "AnnotationType_ResolutionComplete";
     }
     static class Key
     {
@@ -87,6 +96,7 @@ namespace MayhemFamiliar
         public const string AffectorId = "affectorId";
         public const string Annotations = "annotations";
         public const string Category = "category";
+        public const string ControllerSeatId = "controllerSeatId";
         public const string Details = "details";
         public const string DiffDeletedInstanceIds = "diffDeletedInstanceIds";
         public const string GameInfo = "gameInfo";
@@ -96,11 +106,13 @@ namespace MayhemFamiliar
         public const string GreToClientEvent = "greToClientEvent";
         public const string GreToClientMessages = "greToClientMessages";
         public const string GrpId = "grpId";
+        public const string Id = "id";
         public const string InstanceId = "instanceId";
         public const string Name = "name";
         public const string NewId = "new_id";
         public const string ObjectInstanceIds = "objectInstanceIds";
         public const string OrigId = "orig_id";
+        public const string OwnerSeatId = "ownerSeatId";
         public const string Stage = "stage";
         public const string TransactionId = "transactionId";
         public const string Type = "type";
@@ -132,26 +144,65 @@ namespace MayhemFamiliar
         public const string Upkeep = "Step_Upkeep";
 
     }
+    public static class Visibility
+    {
+        public const string Key = "visibility";
+        public const string Public = "Visibility_Public";
+        public const string Private = "Visibility_Private";
+        public const string Hidden = "Visibility_Hidden";
+    }
+    public static class Unknown
+    {
+        public const string Name = "Unknown_Name";
+        public const string Type = "Unknown_Type";
+        public const int GrpId = 0;
+        public const int ZoneId = 0;
+        public const string Player = "Unknown_Player";
+        public const int OwnerSeatId = 0;
+        public const int ControllerSeatId = 0;
+        public const int Id = 0;
+    }
+    public static class Player
+    {
+        public const int You = 1;
+        public const int Opponent = 2;
+        public const int Unknown = 0; // ゲーム開始前や不明なプレイヤー
+    }
     class GameObject
     {
-        public int ZoneId { get; set; }
         public int GrpId { get; set; }
         public string Name { get; set; }
-        public GameObject(int zoneId = -1, int grpId = -1, string name = "Unknown")
+        public string Type { get; set; }
+        public int ZoneId { get; set; }
+        public string Visible { get; set; } // Visibilityクラスと名前が被ってしまうので苦肉の策
+        public int OwnerSeatId { get; set; }
+        public int ControllerSeatId { get; set; }
+        public GameObject(
+            int grpId = Unknown.GrpId, 
+            string name = Unknown.Name,
+            string type = Unknown.Type,
+            int zoneId = Unknown.ZoneId, 
+            string visibility = Visibility.Hidden, 
+            int ownerSeatId = Unknown.OwnerSeatId, 
+            int controllerSeatId = Unknown.ControllerSeatId)
         {
-            ZoneId = zoneId;
             GrpId = grpId;
             Name = name;
+            Type = type;
+            ZoneId = zoneId;
+            Visible = visibility;
+            ControllerSeatId = controllerSeatId;
+            OwnerSeatId = ownerSeatId;
         }
     }
     class TurnInfo
     {
         public string Phase { get; set; } = "";
         public string Step { get; set; } = "";
-        public int TurnNumber { get; set; } = -1;
-        public int ActivePlayer { get; set; } = -1;
-        public int PriorityPlayer { get; set; } = -1;
-        public int DecisionPlayer { get; set; } = -1;
+        public int TurnNumber { get; set; } = 0;
+        public int ActivePlayer { get; set; } = Player.Unknown;
+        public int PriorityPlayer { get; set; } = Player.Unknown;
+        public int DecisionPlayer { get; set; } = Player.Unknown;
         public string NextPhase { get; set; } = "";
         public static string Key = "TurnInfo";
         public static string PhaseKey = "phase";
@@ -171,8 +222,8 @@ namespace MayhemFamiliar
         private CardData _cardData;
         private TurnInfo _turnInfo = new TurnInfo();
         private int _gameStateId = 0;
-        private readonly Dictionary<int, string> _UserActions;
-        private readonly Dictionary<int, string> _Affectors;
+        private readonly Dictionary<int, string> _UserActions = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> _Players = new Dictionary<int, string>();
 
         public JsonParser(Action<string> log, string cardDatabaseDirectoryPath = "")
         {
@@ -182,9 +233,9 @@ namespace MayhemFamiliar
             _UserActions[3] = "PlayLand";
             _UserActions[4] = "Tap";
 
-            _Affectors[1] = "Unknown";
-            _Affectors[1] = "You";
-            _Affectors[2] = "Opponent";
+            _Players[0] = Unknown.Player;
+            _Players[1] = "You";
+            _Players[2] = "Opponent";
 
             if (!String.IsNullOrEmpty(cardDatabaseDirectoryPath))
             {
@@ -252,19 +303,9 @@ namespace MayhemFamiliar
                     ProcesseGreToClientMessage(message);
                 }
             }
-
-            // 
-            if (json[Key.GreToClientEvent]?[Key.GreToClientMessages] is not null)
-            {
-                foreach (var message in json[Key.GreToClientEvent][Key.GreToClientMessages])
-                {
-                    ProcesseGreToClientMessage(message);
-                }
-            }
-
         }
 
-        private string ProcesseGreToClientMessage(JToken message)
+        private void ProcesseGreToClientMessage(JToken message)
         {
             switch (message[Key.Type]?.ToString())
             {
@@ -273,6 +314,7 @@ namespace MayhemFamiliar
                     _log?.Invoke("JsonParser: GREMessageType_MulliganReq");
                     break;
                 case GreMessageType.GameStateMessage:
+                    _gameStateId = (int)message[Key.GameStateId];
                     switch (message[Key.GameStateMessage]?[Key.Type]?.ToString())
                     {
                         case GameStateType.Full:
@@ -284,13 +326,9 @@ namespace MayhemFamiliar
                     }
                     break;
             }
-            return "";
         }
         private void ProcesseGameStateTypeFullMessage(JToken message)
         {
-
-            _gameStateId = (int)message[Key.GameStateId];
-
             // ゲーム開始連絡
             if (message[Key.GameInfo]?[Key.Stage]?.ToString() == GameStage.Start)
             {
@@ -302,15 +340,14 @@ namespace MayhemFamiliar
         }
         private void ProcesseGameStateTypeDiffMessage(JToken message)
         {
-            // TODO
-
-            _gameStateId = (int)message[Key.GameStateId];
-
             // turnInfoの処理（TurnInfoの更新、ターンの開始を判定）
             processTurnInfo(message[TurnInfo.Key]);
 
+            // Zonesの処理（gameObjectsにoiidを登録）
+            processZones(message[Key.Zones]?.ToArray() ?? Array.Empty<JToken>());
+
             // gameObjectsの処理（gameObjectsにoiidを登録、更新）
-            processGameObjects(message[Key.GameObjects].ToArray() ?? Array.Empty<JToken>());
+            processGameObjects(message[Key.GameObjects]?.ToArray() ?? Array.Empty<JToken>());
 
             // annotationsの処理
             processAnnotations(message[Key.Annotations]?.ToArray() ?? Array.Empty<JToken>());
@@ -324,6 +361,8 @@ namespace MayhemFamiliar
 
         private void processAnnotations(IList<JToken> annotations)
         {
+            if (annotations is null) return;
+
             foreach (var annotation in annotations)
             {
                 // TODO
@@ -335,30 +374,43 @@ namespace MayhemFamiliar
                             // オブジェクトIDの変更
                             int origId = (int)annotation[Key.Details][0][Key.ValueInt32][0];
                             int newId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
-                            _gameObjects[newId] = new GameObject(_gameObjects[origId].ZoneId, _gameObjects[origId].GrpId, _gameObjects[origId].Name);
+                            if (!_gameObjects.ContainsKey(newId))
+                            {
+                                _gameObjects[newId] = new GameObject(_gameObjects[origId].ZoneId, _gameObjects[origId].GrpId, _gameObjects[origId].Name, _gameObjects[origId].Type);
+                                _log.Invoke($"JsonParser: オブジェクトID変更 - OrigId: {origId}, NewId: {newId}, ZoneId: {_gameObjects[newId].ZoneId}, GrpId: {_gameObjects[newId].GrpId}, Name: {_gameObjects[newId].Name}");
+                            }
+                            // ProcessZoneと競合するので、存在しない時しかやらない
                             break;
                         }
                     case AnnotationType.ZoneTransfer
                         when annotation[Key.Details] is not null:
                         {
                             // ゾーンの移動
-                            int affectedId = (int)annotation[Key.AffectedIds][0];
-                            int zoneSrcId = (int)annotation[Key.Details][0][Key.ValueInt32][0];
-                            int zoneDestId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
-                            string zoneTransferCategory = annotation[Key.Details][2][Key.ValueInt32][0].ToString();
-                            string affector;
-                            if (ZoneId.YourZones.Contains(zoneSrcId) && ZoneId.YourZones.Contains(zoneDestId)) 
+                            int id = (int)(annotation[Key.Id] ?? Unknown.Id);
+                            int affectorId = (int)(annotation[Key.AffectorId] ?? Unknown.Id);
+                            int affectedId = (int)(annotation[Key.AffectedIds][0] ?? Unknown.Id);
+                            int zoneSrcId = (int)(annotation[Key.Details][0][Key.ValueInt32][0] ?? Unknown.ZoneId);
+                            int zoneDestId = (int)annotation[Key.Details][1][Key.ValueInt32][0] ?? Unknown.ZoneId);
+                            string zoneTransferCategory = annotation[Key.Details][2][Key.ValueString][0].ToString();
+                            if (affectorId == Unknown.Id)
                             {
-                                affector = _Affectors[1]; // あなた
-                            } 
-                            else if (ZoneId.OpponentsZones.Contains(zoneSrcId) && ZoneId.OpponentsZones.Contains(zoneDestId))
-                            {
-                                affector = _Affectors[2]; // 相手
-                            } 
-                            else
-                            {
-                                affector = _Affectors[0]; // 不明
+                                if (ZoneId.YourZones.Contains(zoneSrcId) || ZoneId.YourZones.Contains(zoneDestId))
+                                {
+                                    affectorId = Player.You; // あなた
+                                }
+                                else if (ZoneId.OpponentsZones.Contains(zoneSrcId) || ZoneId.OpponentsZones.Contains(zoneDestId))
+                                {
+                                    affectorId = Player.Opponent; // 対戦相手
+                                }
+                                else
+                                {
+                                    affectorId = Player.Unknown; // 不明
+                                }
                             }
+                            // 【改善可能】affectorIdが3未満ならプレイヤー、そうでないならGameObjectをaffectorとする。
+                            // プレイヤーもGameObject扱いにするか？？？ oiid == 1 ならあなた、2なら対戦相手、10以上ならGameObject（10は仮。いずれプレイヤー数が増える可能性があるので）
+                            // TODO: _gameObjects[affectorId].Name ではなく、affectedIdのコントローラーorオーナーであるべき。
+                            string affector = affectorId < 10 ? _Players[affectorId] : _gameObjects[affectorId].Name;
                             if (_gameObjects.ContainsKey(affectedId))
                             {
                                 _gameObjects[affectedId].ZoneId = zoneDestId;
@@ -370,40 +422,19 @@ namespace MayhemFamiliar
                             );
                             break;
                         }
-                    case AnnotationType.UserActionTaken
-                        when annotation[Key.Details] is not null:
-                        {
-                            // ユーザアクション
-                            string affector = _Affectors[(int)annotation[Key.AffectorId]];
-                            int affectedId = (int)annotation[Key.AffectedIds][0];
-                            int actionType = (int)annotation[Key.Details][0][Key.ValueInt32][0];
-                            int abilityGrpId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
-                            // TODO
-                            switch (actionType)
-                            {
-                                case 3: // PlayLand
-                                    _log?.Invoke($"JsonParser: {affector} {ZoneTransferCategory.PlayLand} {_gameObjects[affectedId].Name}");
-                                    break;
-                                case 4: // Tap
-                                    _log?.Invoke($"JsonParser: {affector} Tap {_gameObjects[affectedId].Name}");
-                                    break;
-                            }
-
-                            break;
-                        }
                 }
             }
         }
 
         private void processTurnInfo(JToken gameInfo)
         {
-            if (gameInfo[TurnInfo.Key] is not null)
+            if (gameInfo?[TurnInfo.Key] is not null)
             {
                 // チェック
                 if (gameInfo[TurnInfo.Key][TurnInfo.PhaseKey]?.ToString() == Phase.Beginning && 
-                    gameInfo[TurnInfo.Key][TurnInfo.StepKey]?.ToString() == Step.Upkeep &&
                     _turnInfo.Phase != Phase.Beginning) 
                 {
+                    // TODO: 誰の？
                     _log.Invoke("JsonParser: ターン開始 - " + _turnInfo.TurnNumber);
                 }
 
@@ -415,11 +446,21 @@ namespace MayhemFamiliar
                 _turnInfo.PriorityPlayer = (int)(gameInfo[TurnInfo.Key][TurnInfo.PriorityPlayerKey] ?? _turnInfo.PriorityPlayer);
                 _turnInfo.DecisionPlayer = (int)(gameInfo[TurnInfo.Key][TurnInfo.DecisionPlayerKey] ?? _turnInfo.DecisionPlayer);
                 _turnInfo.NextPhase = gameInfo[TurnInfo.Key][TurnInfo.NextPhaseKey]?.ToString() ?? _turnInfo.NextPhase;
+
+                _log?.Invoke($"JsonParser: ターン情報更新 - " +
+                    $"Phase: {_turnInfo.Phase}, Step: {_turnInfo.Step}, " +
+                    $"TurnNumber: {_turnInfo.TurnNumber}, " +
+                    $"ActivePlayer: {_turnInfo.ActivePlayer}, " +
+                    $"PriorityPlayer: {_turnInfo.PriorityPlayer}, " +
+                    $"DecisionPlayer: {_turnInfo.DecisionPlayer}, " +
+                    $"NextPhase: {_turnInfo.NextPhase}");
             }
         }
 
         private void processZones(IList<JToken> zones)
         {
+            if (zones is null) return;
+
             foreach (var zone in zones)
             {
                 if (zone[Key.ObjectInstanceIds] is not null)
@@ -428,7 +469,14 @@ namespace MayhemFamiliar
                     {
                         if (!_gameObjects.ContainsKey(oiid))
                         {
-                            _gameObjects[oiid] = new GameObject((int)zone[Key.ZoneId]);
+                            _gameObjects[oiid] = new GameObject(zoneId: (int)zone[Key.ZoneId]);
+                            _log?.Invoke($"JsonParser: オブジェクト新規登録 - InstanceId: {oiid}, ZoneId: {(int)zone[Key.ZoneId]}");
+                        }
+                        else if (_gameObjects[oiid].ZoneId == (int)zone[Key.ZoneId])
+                        {
+                            // 既存のオブジェクトのゾーンが異なる場合は更新
+                            _gameObjects[oiid].ZoneId = (int)zone[Key.ZoneId];
+                            _log?.Invoke($"JsonParser: オブジェクトゾーン更新 - InstanceId: {oiid}, OldZoneId: {_gameObjects[oiid].ZoneId}, NewZoneId: {(int)zone[Key.ZoneId]}");
                         }
                     }
                 }
@@ -437,25 +485,36 @@ namespace MayhemFamiliar
 
         private void processGameObjects(IList<JToken> gameObjects)
         {
+            if (gameObjects is null) return;
+
             foreach (var gameObject in gameObjects)
             {
-                int oiid = (int)gameObject[Key.InstanceId];
-                if (!_gameObjects.ContainsKey(oiid))
+                int instanceId = (int)gameObject[Key.InstanceId];
+                string type = gameObject[Key.Type]?.ToString() ?? Unknown.Type;
+                if (!_gameObjects.ContainsKey(instanceId))
                 {
                     // オブジェクトが存在しなければ追加
-                    _gameObjects[oiid] = new GameObject();
+                    _gameObjects[instanceId] = new GameObject();
+                    _log?.Invoke($"JsonParser: オブジェクト新規登録 - InstanceId: {instanceId}");
                 }
                 // オブジェクトを更新
-                _gameObjects[oiid].GrpId = (int)gameObject[Key.GrpId];
-                _gameObjects[oiid].ZoneId = (int)gameObject[Key.ZoneId];
+                _gameObjects[instanceId].GrpId = (int)(gameObject[Key.GrpId] ?? Unknown.GrpId);
+                _gameObjects[instanceId].Type = gameObject[Key.Type]?.ToString() ?? Unknown.Type;
+                _gameObjects[instanceId].ZoneId = (int)(gameObject[Key.ZoneId] ?? Unknown.ZoneId);
+                // TODO ほかにも更新
                 if (gameObject[Key.Name] is not null)
                 {
-                    _gameObjects[oiid].Name = _cardData.GetCardNameByLocId((int)gameObject[Key.Name]) ?? "Unknown";
+                    _gameObjects[instanceId].Name = _cardData.GetCardNameByLocId((int)gameObject[Key.Name]) ?? Unknown.Name;
                 }
-                else if (_cardData != null && _gameObjects[oiid].GrpId != -1)
+                else if (_gameObjects[instanceId].GrpId != Unknown.GrpId && GameObjectType.NamableObjectTypes.Contains(_gameObjects[instanceId].Type))
                 {
-                    _gameObjects[oiid].Name = _cardData.GetCardNameByGrpId(_gameObjects[oiid].GrpId) ?? "Unknown";
+                    _gameObjects[instanceId].Name = _cardData.GetCardNameByGrpId(_gameObjects[instanceId].GrpId) ?? Unknown.Name;
                 }
+                else if (!GameObjectType.NamableObjectTypes.Contains(_gameObjects[instanceId].Type))
+                {
+                    _gameObjects[instanceId].Name = _gameObjects[instanceId].Type.Replace("GameObjectType_", "");
+                }
+                _log?.Invoke($"JsonParser: オブジェクト更新 - InstanceId: {instanceId}, GrpId: {_gameObjects[instanceId].GrpId}, ZoneId: {_gameObjects[instanceId].ZoneId}, Name: {_gameObjects[instanceId].Name}, Type: {_gameObjects[instanceId].Type}");
             }
         }
 

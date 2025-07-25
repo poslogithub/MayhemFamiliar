@@ -63,5 +63,28 @@ namespace MayhemFamiliar
                 textBoxLog.ScrollToCaret();
             }
         }
+
+        private static string? SelectDirectory()
+        {
+            using (var dialog = new FolderBrowserDialog())
+            {
+                // ダイアログの設定（オプション）
+                // dialog.Description = "MTGアリーナのログファイルが出力されるディレクトリを選択してください"; // ダイアログの説明
+                // dialog.ShowNewFolderButton = false; // 新しいフォルダ作成ボタンの表示（デフォルト: true）
+
+                // ダイアログを表示
+                DialogResult result = dialog.ShowDialog();
+
+                // ユーザーが「OK」をクリックした場合、選択されたパスを返す
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
+                {
+                    return dialog.SelectedPath;
+                }
+
+                // キャンセルまたは有効なパスが選択されなかった場合
+                return null;
+            }
+        }
+
     }
 }

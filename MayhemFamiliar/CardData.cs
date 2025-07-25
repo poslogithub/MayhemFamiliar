@@ -22,11 +22,8 @@ namespace MayhemFamiliar
         {
             string? loc = null;
             string tableName = $"Localizations_{_uiCulture}";
-            string sql = $@"
-                SELECT l.Loc 
-                FROM Cards c
-                JOIN {tableName} l ON c.TitleId = l.LocId
-                WHERE c.GrpId = @GrpId AND l.Formatted = 1";
+            string locColumnName = "Loc";
+            string sql = $"SELECT l.Loc FROM Cards c JOIN {tableName} l ON c.TitleId = l.LocId WHERE c.GrpId = @GrpId AND l.Formatted = 1";
 
             using (var cmd = new SQLiteCommand(sql, _connection))
             {
@@ -35,7 +32,7 @@ namespace MayhemFamiliar
                 {
                     if (reader.Read())
                     {
-                        loc = reader["Loc"]?.ToString();
+                        loc = reader[locColumnName]?.ToString();
                     }
                 }
             }
@@ -54,7 +51,7 @@ namespace MayhemFamiliar
 
             // 変数4: Localizations_変数2 テーブルから Loc を取得
             string tableName = $"Localizations_{_uiCulture}";
-            string sql = $"SELECT Loc FROM {tableName} WHERE LocId = '@LocId' AND Formatted = 1";
+            string sql = $"SELECT Loc FROM {tableName} WHERE LocId = @LocId AND Formatted = 1";
             using (var cmd = new SQLiteCommand(sql, _connection))
             {
                 cmd.Parameters.AddWithValue("@LocId", locId);

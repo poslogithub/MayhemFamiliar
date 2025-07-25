@@ -11,7 +11,12 @@ namespace MayhemFamiliar
 {
     internal class LogWatcher
     {
-        private readonly string _logDirectory = @"C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Logs\Logs";
+        private readonly string _logDirectory;
+        private string _DefaultAppLogDirectory = @"C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Logs\Logs";
+        private string _DefaultUserLogDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            @"LocalLow\Wizards Of The Coast\MTGA"
+        );
         private readonly Action<string> _log;
         private FileSystemWatcher? _watcher;
         private static long _lastFileSize = 0; // 最後に読み取ったファイルサイズ
@@ -21,7 +26,25 @@ namespace MayhemFamiliar
         public LogWatcher(Action<string> logAction, string logDirectory = "")
         {
             _log = logAction ?? throw new ArgumentNullException(nameof(logAction));
-            if (!String.IsNullOrEmpty(logDirectory))
+
+            if (String.IsNullOrEmpty(logDirectory))
+            {
+                // TODO ログディレクトリの存在チェックから入るよ
+                if (Directory.Exists(_DefaultAppLogDirectory))
+                {
+                    _logDirectory = _DefaultAppLogDirectory;
+                }
+                else if (Directory.Exists(_DefaultUserLogDirectory))
+                {
+                    _logDirectory = _DefaultUserLogDirectory;
+                }
+                else
+                {
+                    // TODO ログディレクトリが見つからない場合の処理...本来はMainFormで設定するべき
+                    throw new DirectoryNotFoundException("ログディレクトリが見つかりません。");
+                }
+            }
+            else
             {
                 _logDirectory = logDirectory;
             }
@@ -37,15 +60,17 @@ namespace MayhemFamiliar
                 _log?.Invoke("LogWatcher: .logファイルが見つかりません");
                 return;
             }
-            _lastFileSize = new FileInfo(filePath).Length;
+            // _lastFileSize = new FileInfo(filePath).Length;   最初から読み込む。
 
             _log?.Invoke($"LogWatcher: {filePath} の監視を開始");
-            _watcher = new FileSystemWatcher(Path.GetDirectoryName(filePath), Path.GetFileName(filePath))
-            {
-                NotifyFilter = NotifyFilters.LastWrite,
-                EnableRaisingEvents = true
-            };
+            _watcher = new FileSystemWatcher(Path.GetDirectoryName(filePath), Path.GetFileName(filePath));
+            _watcher.NotifyFilter = NotifyFilters.LastWrite;
             _watcher.Changed += OnChanged;
+            _watcher.EnableRaisingEvents = true;
+
+            // 初期読み込み
+            var args = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(filePath), Path.GetFileName(filePath));
+            OnChanged(_watcher, args);
         }
 
         private static void OnChanged(object sender, FileSystemEventArgs e)

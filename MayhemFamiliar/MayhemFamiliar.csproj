@@ -2,11 +2,11 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.22000.0</TargetFramework>
 	<Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>$(NoWarn);CS8600</NoWarn>
+	<NoWarn>$(NoWarn);CS8600</NoWarn>
     <NoWarn>$(NoWarn);CS8602</NoWarn>
     <NoWarn>$(NoWarn);CS8604</NoWarn>
     <NoWarn>$(NoWarn);CS8622</NoWarn>
