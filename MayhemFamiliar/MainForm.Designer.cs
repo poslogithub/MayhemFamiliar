@@ -40,51 +40,58 @@
             // 
             tabControl1.Controls.Add(tabLog);
             tabControl1.Controls.Add(tabPage2);
-            tabControl1.Location = new Point(12, 12);
+            tabControl1.Dock = DockStyle.Fill;
+            tabControl1.Location = new Point(0, 0);
+            tabControl1.Margin = new Padding(4, 5, 4, 5);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(776, 426);
+            tabControl1.Size = new Size(1143, 750);
             tabControl1.TabIndex = 0;
             // 
             // tabLog
             // 
             tabLog.Controls.Add(textBoxLog);
-            tabLog.Location = new Point(4, 24);
+            tabLog.Location = new Point(4, 34);
+            tabLog.Margin = new Padding(4, 5, 4, 5);
             tabLog.Name = "tabLog";
-            tabLog.Padding = new Padding(3);
-            tabLog.Size = new Size(768, 398);
+            tabLog.Padding = new Padding(4, 5, 4, 5);
+            tabLog.Size = new Size(1135, 712);
             tabLog.TabIndex = 0;
             tabLog.Text = "ログ";
             tabLog.UseVisualStyleBackColor = true;
             // 
             // textBoxLog
             // 
-            textBoxLog.Location = new Point(6, 6);
+            textBoxLog.Dock = DockStyle.Fill;
+            textBoxLog.Location = new Point(4, 5);
+            textBoxLog.Margin = new Padding(4, 5, 4, 5);
             textBoxLog.Multiline = true;
             textBoxLog.Name = "textBoxLog";
             textBoxLog.ReadOnly = true;
             textBoxLog.ScrollBars = ScrollBars.Both;
-            textBoxLog.Size = new Size(756, 386);
+            textBoxLog.Size = new Size(1127, 702);
             textBoxLog.TabIndex = 0;
             textBoxLog.WordWrap = false;
             // 
             // tabPage2
             // 
-            tabPage2.Location = new Point(4, 24);
+            tabPage2.Location = new Point(4, 34);
+            tabPage2.Margin = new Padding(4, 5, 4, 5);
             tabPage2.Name = "tabPage2";
-            tabPage2.Padding = new Padding(3);
-            tabPage2.Size = new Size(768, 398);
+            tabPage2.Padding = new Padding(4, 5, 4, 5);
+            tabPage2.Size = new Size(1101, 672);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "tabPage2";
             tabPage2.UseVisualStyleBackColor = true;
             // 
-            // Form1
+            // MainForm
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(1143, 750);
             Controls.Add(tabControl1);
-            Name = "Form1";
+            Margin = new Padding(4, 5, 4, 5);
+            Name = "MainForm";
             Text = "Form1";
             tabControl1.ResumeLayout(false);
             tabLog.ResumeLayout(false);

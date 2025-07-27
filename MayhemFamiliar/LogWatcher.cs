@@ -30,13 +30,13 @@ namespace MayhemFamiliar
             if (String.IsNullOrEmpty(logDirectory))
             {
                 // TODO ログディレクトリの存在チェックから入るよ
-                if (Directory.Exists(_DefaultAppLogDirectory))
-                {
-                    _logDirectory = _DefaultAppLogDirectory;
-                }
-                else if (Directory.Exists(_DefaultUserLogDirectory))
+                if (Directory.Exists(_DefaultUserLogDirectory))
                 {
                     _logDirectory = _DefaultUserLogDirectory;
+                }
+                else if (Directory.Exists(_DefaultAppLogDirectory))
+                {
+                    _logDirectory = _DefaultAppLogDirectory;
                 }
                 else
                 {
@@ -50,19 +50,19 @@ namespace MayhemFamiliar
             }
         }
 
-        public void Start()
+        public void Start(CancellationToken _ctsLogWatcher)
         {
-            _log?.Invoke("LogWatcher: 開始");
+            _log?.Invoke($"{this.GetType().Name}: 開始");
             // 最新の.logファイルを取得
             var filePath = GetLatestLogFile();
             if (filePath == null)
             {
-                _log?.Invoke("LogWatcher: .logファイルが見つかりません");
+                _log?.Invoke($"{this.GetType().Name}: .logファイルが見つかりません");
                 return;
             }
             // _lastFileSize = new FileInfo(filePath).Length;   最初から読み込む。
 
-            _log?.Invoke($"LogWatcher: {filePath} の監視を開始");
+            _log?.Invoke($"{this.GetType().Name}: {filePath} の監視を開始");
             _watcher = new FileSystemWatcher(Path.GetDirectoryName(filePath), Path.GetFileName(filePath));
             _watcher.NotifyFilter = NotifyFilters.LastWrite;
             _watcher.Changed += OnChanged;
@@ -73,7 +73,7 @@ namespace MayhemFamiliar
             OnChanged(_watcher, args);
         }
 
-        private static void OnChanged(object sender, FileSystemEventArgs e)
+        private void OnChanged(object sender, FileSystemEventArgs e)
         {
             try
             {
@@ -127,7 +127,7 @@ namespace MayhemFamiliar
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"読み込みエラー: {ex.Message}");
+                Console.WriteLine($"{this.GetType().Name}: 読み込みエラー: {ex.Message}");
             }
         }
         private string? GetLatestLogFile()
@@ -136,7 +136,7 @@ namespace MayhemFamiliar
             {
                 if (!Directory.Exists(_logDirectory))
                 {
-                    _log?.Invoke($"LogTailer: ディレクトリ {_logDirectory} が見つかりません");
+                    _log?.Invoke($"{this.GetType().Name}: ディレクトリ {_logDirectory} が見つかりません");
                     return null;
                 }
 
@@ -148,7 +148,7 @@ namespace MayhemFamiliar
             }
             catch (Exception ex)
             {
-                _log?.Invoke($"LogTailer: 最新ファイル取得エラー: {ex.Message}");
+                _log?.Invoke($"{this.GetType().Name}: 最新ファイル取得エラー: {ex.Message}");
                 return null;
             }
         }

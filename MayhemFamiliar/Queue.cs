@@ -16,7 +16,7 @@ namespace MayhemFamiliar.QueueManager
     }
 
     // DialogGenerator -> Speaker
-    public static class DialogQueue
+    public static class DialogueQueue
     {
         public static ConcurrentQueue<string> Queue { get; } = new ConcurrentQueue<string>();
     }

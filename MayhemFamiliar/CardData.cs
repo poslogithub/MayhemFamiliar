@@ -1,5 +1,6 @@
 ﻿using System.Data.SQLite;
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace MayhemFamiliar
 {
@@ -13,7 +14,7 @@ namespace MayhemFamiliar
         public CardData(string dbFilePath)
         {
             _dbFilePath = dbFilePath ?? throw new ArgumentNullException(nameof(dbFilePath));
-            _uiCulture = System.Globalization.CultureInfo.CurrentUICulture.Name.Replace("-", "");
+            _uiCulture = CultureInfo.CurrentUICulture.Name.Replace("-", "");
             _connection = new SQLiteConnection($"Data Source={_dbFilePath};Version=3;");
             _connection.Open();
         }
