@@ -13,6 +13,12 @@
 	<NoWarn>$(NoWarn);CS8622</NoWarn>
   </PropertyGroup>
 
+	<Target Name="RemoveUnnecessarySQLiteFolders" AfterTargets="CopyFilesToOutputDirectory">
+		<RemoveDir Directories="$(OutDir)runtimes\linux-x64" />
+		<RemoveDir Directories="$(OutDir)runtimes\osx-x64" />
+		<RemoveDir Directories="$(OutDir)runtimes\win-x86" />
+	</Target>
+	
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
