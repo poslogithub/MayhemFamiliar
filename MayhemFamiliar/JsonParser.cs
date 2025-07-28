@@ -1,12 +1,17 @@
 ﻿// JsonParser.cs
 using MayhemFamiliar.QueueManager;
 using Newtonsoft.Json.Linq;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
 
 namespace MayhemFamiliar
 {
+    static class  MatchState
+    {
+        public const string Key = "matchState";
+        public const string GameComplete = "MatchState_GameComplete";
+        public const string MatchComplete = "MatchState_MatchComplete";
+        public const string GameInProgress = "MatchState_GameInProgress";
+    }
     static class ZoneType
     {
         public const string Revealed = "ZoneType_Revealed";
@@ -233,7 +238,6 @@ namespace MayhemFamiliar
     }
     internal class JsonParser
     {
-        private readonly Action<string> _log;
         private Dictionary<int, GameObject> _gameObjects;
         private string _cardDatabaseFilePath;
         private string _cardDatabaseDirectoryPath = @"C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Downloads\Raw";
@@ -241,9 +245,8 @@ namespace MayhemFamiliar
         private TurnInfo _turnInfo = new TurnInfo();
         private int _gameStateId = 0;
 
-        public JsonParser(Action<string> log, string cardDatabaseDirectoryPath = "")
+        public JsonParser(string cardDatabaseDirectoryPath = "")
         {
-            _log = log;
             _gameObjects = new Dictionary<int, GameObject>();
 
 
@@ -253,24 +256,27 @@ namespace MayhemFamiliar
             }
             if (!Directory.Exists(_cardDatabaseDirectoryPath))
             {
+                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースディレクトリが見つかりません: {_cardDatabaseDirectoryPath}", LogLevel.Error);
                 throw new DirectoryNotFoundException($"カードデータベースディレクトリが見つかりません: {_cardDatabaseDirectoryPath}");
             }
             string? cardDatabaseFileName = GetCardDatabaseFileName(_cardDatabaseDirectoryPath);
             if (String.IsNullOrEmpty(cardDatabaseFileName))
             {
-                throw new FileNotFoundException("カードデータベースファイルが見つかりません。ディレクトリ内にRaw_CardDatabase_*.mtgaファイルが存在することを確認してください。", _cardDatabaseDirectoryPath);
+                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイルが見つかりません。ディレクトリ内にRaw_CardDatabase_*.mtgaファイルが存在することを確認してください。{_cardDatabaseDirectoryPath}", LogLevel.Error);
+                throw new FileNotFoundException($"カードデータベースファイルが見つかりません。ディレクトリ内にRaw_CardDatabase_*.mtgaファイルが存在することを確認してください。{_cardDatabaseDirectoryPath}");
             }
             _cardDatabaseFilePath = Path.Combine(_cardDatabaseDirectoryPath, GetCardDatabaseFileName(_cardDatabaseDirectoryPath));
-            _log?.Invoke($"{this.GetType().Name}: CardDatabase接続開始");
+            Logger.Instance.Log($"{this.GetType().Name}: CardDatabase接続開始");
             _cardData = new CardData(_cardDatabaseFilePath);
         }
 
         public async Task Start(CancellationToken cancellationToken)
         {
-            try
+            // TODO: tryは全部各Process処理の中に入れる
+            Logger.Instance.Log($"{this.GetType().Name}: 開始");
+            while (!cancellationToken.IsCancellationRequested)
             {
-                _log?.Invoke($"{this.GetType().Name}: 開始");
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
                     if (JsonQueue.Queue.TryDequeue(out string jsonString))
                     {
@@ -282,25 +288,34 @@ namespace MayhemFamiliar
                         await Task.Delay(100, cancellationToken);
                     }
                 }
-                _log?.Invoke($"{this.GetType().Name}: キャンセルされました");
-            }
-            catch (OperationCanceledException)
-            {
-                _log?.Invoke($"{this.GetType().Name}: キャンセルされました");
-            }
-            catch (Exception ex)
-            {
-                _log?.Invoke($"{this.GetType().Name}: エラー発生: {ex.Message}");
+                catch (OperationCanceledException)
+                {
+                    Logger.Instance.Log($"{this.GetType().Name}: キャンセルされました");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Instance.Log($"{this.GetType().Name}: エラー発生: {ex.Message}", LogLevel.Error);
+                }
             }
         }
 
         private void ProcessJson(string jsonString)
         {
             // JSONパース
-            JObject json = JObject.Parse(jsonString);
+            JObject? json = null;
+            try
+            {
+                json = JObject.Parse(jsonString);
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: JSON文字列のパース中に例外が発生", LogLevel.Error);
+                Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}", LogLevel.Error);
+                return;
+            }
 
-            // 条件チェック
-            if (json[Key.TransactionId] is null)
+            // TransactionIdが無いメッセージは全て無視
+            if (json?[Key.TransactionId] is null)
             {
                 return;
             }
@@ -321,7 +336,8 @@ namespace MayhemFamiliar
             {
                 case GreMessageType.MulliganReq:
                     // GREMessageType_MulliganReq
-                    _log?.Invoke($"{this.GetType().Name}: GREMessageType_MulliganReq");
+                    Logger.Instance.Log($"{this.GetType().Name}: GREMessageType_MulliganReq");
+                    EventQueue.Queue.Enqueue($"{Player.You} {Verb.Mulligan}");
                     break;
                 case GreMessageType.GameStateMessage:
                     _gameStateId = (int)message[Key.GameStateId];
@@ -339,11 +355,8 @@ namespace MayhemFamiliar
         }
         private void ProcesseGameStateTypeFullMessage(JToken message)
         {
-            // ゲーム開始連絡
-            if (message[Key.GameInfo]?[Key.Stage]?.ToString() == GameStage.Start)
-            {
-                _log?.Invoke($"{this.GetType().Name}: ゲーム開始");
-            }
+            // gameInfoの処理
+            processGameInfo(message[Key.GameInfo]);
 
             // Zonesの処理（gameObjectsにoiidを登録）
             processZones(message[Key.Zones]?.ToArray() ?? Array.Empty<JToken>());
@@ -362,13 +375,29 @@ namespace MayhemFamiliar
             // annotationsの処理
             processAnnotations(message[Key.Annotations]?.ToArray() ?? Array.Empty<JToken>());
 
-            // ゲーム終了連絡
-            if (message[Key.GameInfo]?[Key.Stage]?.ToString() == GameStage.GameOver)
-            {
-                _log?.Invoke($"{this.GetType().Name}: ゲーム終了");
-            }
+            // gameInfoの処理
+            processGameInfo(message[Key.GameInfo]);
         }
 
+        private void processGameInfo(JToken gameInfo)
+        {
+            if (gameInfo is null) return;
+
+            // ゲーム開始連絡
+            if (gameInfo[Key.Stage]?.ToString() == GameStage.Start)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: ゲーム開始");
+                EventQueue.Queue.Enqueue($"{Player.You} {Verb.GameStart}");
+            }
+
+            // ゲーム終了連絡
+            if (gameInfo[Key.Stage]?.ToString() == GameStage.GameOver &&
+                gameInfo[MatchState.Key]?.ToString() == MatchState.GameComplete)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: ゲーム終了");
+                EventQueue.Queue.Enqueue($"{Player.You} {Verb.GameOver}");
+            }
+        }
         private void processAnnotations(IList<JToken> annotations)
         {
             if (annotations is null) return;
@@ -394,7 +423,7 @@ namespace MayhemFamiliar
                                     _gameObjects[origId].Visible, 
                                     _gameObjects[origId].OwnerSeatId, 
                                     _gameObjects[origId].ControllerSeatId);
-                                _log.Invoke($"{this.GetType().Name}: オブジェクトID変更 - OrigId: {origId}, NewId: {newId}, {_gameObjects[newId].GetDescription()}");
+                                Logger.Instance.Log($"{this.GetType().Name}: オブジェクトID変更 - OrigId: {origId}, NewId: {newId}, {_gameObjects[newId].GetDescription()}", LogLevel.Debug);
                             }
                             // ProcessZoneと競合するので、存在しない時しかやらない
                             break;
@@ -436,7 +465,7 @@ namespace MayhemFamiliar
                                 {
                                     _gameObjects[affectedId].ZoneId = zoneDestId;
                                 }
-                                _log?.Invoke($"{this.GetType().Name}: {player} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\"");
+                                Logger.Instance.Log($"{this.GetType().Name}: {player} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\"", LogLevel.Debug);
                                 EventQueue.Queue.Enqueue($"{player} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\"");
                             }
                             break;
@@ -454,7 +483,8 @@ namespace MayhemFamiliar
                     _turnInfo.Phase != Phase.Beginning) 
                 {
                     // TODO: 誰の？
-                    _log.Invoke($"{this.GetType().Name}: ターン開始 - " + _turnInfo.TurnNumber);
+                    Logger.Instance.Log($"{this.GetType().Name}: ターン開始 - " + _turnInfo.TurnNumber);
+                    EventQueue.Queue.Enqueue($"{Player.Unknown} {Verb.TurnStart}");
                 }
 
                 // 更新
@@ -466,13 +496,14 @@ namespace MayhemFamiliar
                 _turnInfo.DecisionPlayer = (int)(gameInfo[TurnInfo.Key][TurnInfo.DecisionPlayerKey] ?? _turnInfo.DecisionPlayer);
                 _turnInfo.NextPhase = gameInfo[TurnInfo.Key][TurnInfo.NextPhaseKey]?.ToString() ?? _turnInfo.NextPhase;
 
-                _log?.Invoke($"{this.GetType().Name}: ターン情報更新 - " +
+                Logger.Instance.Log($"{this.GetType().Name}: ターン情報更新 - " +
                     $"Phase: {_turnInfo.Phase}, Step: {_turnInfo.Step}, " +
                     $"TurnNumber: {_turnInfo.TurnNumber}, " +
                     $"ActivePlayer: {_turnInfo.ActivePlayer}, " +
                     $"PriorityPlayer: {_turnInfo.PriorityPlayer}, " +
                     $"DecisionPlayer: {_turnInfo.DecisionPlayer}, " +
-                    $"NextPhase: {_turnInfo.NextPhase}");
+                    $"NextPhase: {_turnInfo.NextPhase}", 
+                    LogLevel.Debug);
             }
         }
 
@@ -489,12 +520,12 @@ namespace MayhemFamiliar
                         if (!_gameObjects.ContainsKey(oiid))
                         {
                             _gameObjects[oiid] = new GameObject(zoneId: (int)zone[Key.ZoneId]);
-                            _log?.Invoke($"{this.GetType().Name}: オブジェクト新規登録 - InstanceId: {oiid}, ZoneId: {(int)zone[Key.ZoneId]}");
+                            Logger.Instance.Log($"{this.GetType().Name}: オブジェクト新規登録 - InstanceId: {oiid}, ZoneId: {(int)zone[Key.ZoneId]}", LogLevel.Debug);
                         }
                         else if (_gameObjects[oiid].ZoneId != (int)zone[Key.ZoneId])
                         {
                             // 既存のオブジェクトのゾーンが異なる場合は更新
-                            _log?.Invoke($"{this.GetType().Name}: オブジェクトゾーン更新 - InstanceId: {oiid}, OldZoneId: {_gameObjects[oiid].ZoneId}, NewZoneId: {(int)zone[Key.ZoneId]}, {_gameObjects[oiid].GetDescription()}");
+                            Logger.Instance.Log($"{this.GetType().Name}: オブジェクトゾーン更新 - InstanceId: {oiid}, OldZoneId: {_gameObjects[oiid].ZoneId}, NewZoneId: {(int)zone[Key.ZoneId]}, {_gameObjects[oiid].GetDescription()}", LogLevel.Debug);
                             _gameObjects[oiid].ZoneId = (int)zone[Key.ZoneId];
                         }
                     }
@@ -514,7 +545,7 @@ namespace MayhemFamiliar
                 {
                     // オブジェクトが存在しなければ追加
                     _gameObjects[instanceId] = new GameObject();
-                    _log?.Invoke($"{this.GetType().Name}: オブジェクト新規登録 - InstanceId: {instanceId}");
+                    Logger.Instance.Log($"{this.GetType().Name}: オブジェクト新規登録 - InstanceId: {instanceId}", LogLevel.Debug);
                 }
                 // オブジェクトを更新
                 _gameObjects[instanceId].GrpId = (int)(gameObject[Key.GrpId] ?? _gameObjects[instanceId].GrpId);
@@ -536,7 +567,7 @@ namespace MayhemFamiliar
                 {
                     _gameObjects[instanceId].Name = _gameObjects[instanceId].Type.Replace("GameObjectType_", "");
                 }
-                _log?.Invoke($"{this.GetType().Name}: オブジェクト更新 - InstanceId: {instanceId}, {_gameObjects[instanceId].GetDescription()}");
+                Logger.Instance.Log($"{this.GetType().Name}: オブジェクト更新 - InstanceId: {instanceId}, {_gameObjects[instanceId].GetDescription()}", LogLevel.Debug);
             }
         }
 

@@ -6,7 +6,8 @@
 	<Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-	<NoWarn>$(NoWarn);CS8600</NoWarn>
+	<NoWarn>$(NoWarn);CA1416</NoWarn>
+    <NoWarn>$(NoWarn);CS8600</NoWarn>
     <NoWarn>$(NoWarn);CS8602</NoWarn>
     <NoWarn>$(NoWarn);CS8604</NoWarn>
 	<NoWarn>$(NoWarn);CS8618</NoWarn>
@@ -18,8 +19,8 @@
 		<RemoveDir Directories="$(OutDir)runtimes\osx-x64" />
 		<RemoveDir Directories="$(OutDir)runtimes\win-x86" />
 	</Target>
-	
-  <ItemGroup>
+
+	<ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
   </ItemGroup>

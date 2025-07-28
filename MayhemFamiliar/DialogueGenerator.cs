@@ -5,26 +5,32 @@ namespace MayhemFamiliar
 {
     class Verb
     {
+        public const string Mulligan = "Mulligan";
+        public const string GameStart = "GameStart";
+        public const string GameOver = "GameOver";
+        public const string TurnStart = "TurnStart";
         public static readonly string[] Speak = {
             ZoneTransferCategory.Discard,
             ZoneTransferCategory.PlayLand,
             ZoneTransferCategory.CastSpell,
             ZoneTransferCategory.Draw,
-            ZoneTransferCategory.Sacrifice
+            ZoneTransferCategory.Sacrifice,
+            Verb.Mulligan,
+            Verb.GameStart,
+            Verb.GameOver,
+            Verb.TurnStart
         };
     }
     internal class DialogueGenerator
     {
-        private readonly Action<string> _log;
-        public DialogueGenerator(Action<string> log)
+        public DialogueGenerator()
         {
-            _log = log;
         }
         public async Task Start(CancellationToken cancellationToken)
         {
             try
             {
-                _log?.Invoke($"{this.GetType().Name}: 開始");
+                Logger.Instance.Log($"{this.GetType().Name}: 開始");
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     if (EventQueue.Queue.TryDequeue(out string eventString))
@@ -37,15 +43,15 @@ namespace MayhemFamiliar
                         await Task.Delay(100, cancellationToken);
                     }
                 }
-                _log?.Invoke($"{this.GetType().Name}: キャンセルされました");
+                Logger.Instance.Log($"{this.GetType().Name}: キャンセルされました");
             }
             catch (OperationCanceledException)
             {
-                _log?.Invoke($"{this.GetType().Name}: キャンセルされました");
+                Logger.Instance.Log($"{this.GetType().Name}: キャンセルされました");
             }
             catch (Exception ex)
             {
-                _log?.Invoke($"{this.GetType().Name}: エラー発生: {ex.Message}");
+                Logger.Instance.Log($"{this.GetType().Name}: エラー発生: {ex.Message}", LogLevel.Error);
             }
         }
         private void ProcessEvent(string eventString)
@@ -61,28 +67,58 @@ namespace MayhemFamiliar
             }
 
             string dialogue = "";
+            switch(verb)
+            {
+                case Verb.Mulligan:
+                    dialogue = "マリガンチェック。";
+                    break;
+                case Verb.GameStart:
+                    dialogue = "対戦よろしくお願いします。";
+                    break;
+                case Verb.GameOver:
+                    dialogue = "対戦ありがとうございました。";
+                    break;
+                case Verb.TurnStart:
+                    switch (subject)
+                    {
+                        case Player.You:
+                            dialogue = "こちらのターン。";
+                            break;
+                        case Player.Opponent:
+                            dialogue = "お相手のターン。";
+                            break;
+                        default:
+                            dialogue = "誰かのターン。";
+                            break;
+                    }
+                    break;
+            }
+            if (!String.IsNullOrEmpty(dialogue))
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
+                DialogueQueue.Queue.Enqueue(dialogue);
+                return;
+            }
+
             switch (subject)
             {
                 case Player.You:
                     break;
                 case Player.Opponent:
-                    dialogue += "お相手が";
+                    dialogue = "お相手が";
                     break;
                 default:
-                    dialogue += "不明なプレイヤーが";
+                    dialogue = "不明なプレイヤーが";
                     break;
             }
-
             if (!String.IsNullOrEmpty(objective))
             {
-                if (
-                    !(subject == Player.Opponent && verb == ZoneTransferCategory.Draw))
+                if (!(subject == Player.Opponent && verb == ZoneTransferCategory.Draw))
                 {
                     objective = ReplaceObjectiveDelimiters(objective);
                     dialogue += objective + "を";
                 }
             }
-
             switch (verb)
             {
                 case ZoneTransferCategory.CastSpell:
@@ -104,8 +140,7 @@ namespace MayhemFamiliar
                     dialogue += "不明な動作。";
                     break;
             }
-
-            _log.Invoke($"{this.GetType().Name}: {dialogue}");
+            Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
             DialogueQueue.Queue.Enqueue(dialogue);
         }
         private void SplitEventString(string eventString, ref string subject, ref string verb, ref string objective)

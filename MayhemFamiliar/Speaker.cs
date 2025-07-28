@@ -7,12 +7,10 @@ namespace MayhemFamiliar
 {
     internal class Speaker
     {
-        private readonly Action<string> _log;
         private SpeechSynthesizer _synthesizer;
         private MediaPlayer _mediaPlayer;
-        public Speaker(Action<string> log)
+        public Speaker()
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
             _synthesizer = new SpeechSynthesizer();
             _mediaPlayer = new MediaPlayer();
         }
@@ -20,7 +18,7 @@ namespace MayhemFamiliar
         {
             try
             {
-                _log?.Invoke($"{this.GetType().Name}: 開始");
+                Logger.Instance.Log($"{this.GetType().Name}: 開始");
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     if (DialogueQueue.Queue.TryDequeue(out string dialogue))
@@ -33,20 +31,20 @@ namespace MayhemFamiliar
                         await Task.Delay(100, cancellationToken);
                     }
                 }
-                _log?.Invoke($"{this.GetType().Name}: キャンセルされました");
+                Logger.Instance.Log($"{this.GetType().Name}: キャンセルされました");
             }
             catch (OperationCanceledException)
             {
-                _log?.Invoke($"{this.GetType().Name}: キャンセルされました");
+                Logger.Instance.Log($"{this.GetType().Name}: キャンセルされました");
             }
             catch (Exception ex)
             {
-                _log?.Invoke($"{this.GetType().Name}: エラー発生: {ex.Message}");
+                Logger.Instance.Log($"{this.GetType().Name}: エラー発生: {ex.Message}");
             }
         }
         private async Task ProcessDialogue(string dialogue)
         {
-            _log?.Invoke($"Processing dialogue: {dialogue}");
+            Logger.Instance.Log($"Processing dialogue: {dialogue}");
             MediaPlayer mediaPlayer = new MediaPlayer();
             var stream = await _synthesizer.SynthesizeTextToStreamAsync(dialogue);
             mediaPlayer.Source = MediaSource.CreateFromStream(stream, "audio/wav");
