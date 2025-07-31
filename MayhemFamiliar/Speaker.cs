@@ -1,7 +1,9 @@
 ﻿using MayhemFamiliar.QueueManager;
-using Windows.Media.Core;
-using Windows.Media.Playback;
-using Windows.Media.SpeechSynthesis;
+using System;
+using System.Speech.Synthesis;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Media;
 
 namespace MayhemFamiliar
 {
@@ -12,6 +14,7 @@ namespace MayhemFamiliar
         public Speaker()
         {
             _synthesizer = new SpeechSynthesizer();
+            _synthesizer.SetOutputToDefaultAudioDevice();
             _mediaPlayer = new MediaPlayer();
         }
         public async Task Start(CancellationToken cancellationToken)
@@ -44,14 +47,9 @@ namespace MayhemFamiliar
         }
         private async Task ProcessDialogue(string dialogue)
         {
-            Logger.Instance.Log($"Processing dialogue: {dialogue}");
+            Logger.Instance.Log($"{this.GetType().Name}: ダイアログを処理: {dialogue}", LogLevel.Debug);
             MediaPlayer mediaPlayer = new MediaPlayer();
-            var stream = await _synthesizer.SynthesizeTextToStreamAsync(dialogue);
-            mediaPlayer.Source = MediaSource.CreateFromStream(stream, "audio/wav");
-            var tcs = new TaskCompletionSource<int>();
-            mediaPlayer.MediaEnded += (sender, o) => tcs.SetResult(0);
-            mediaPlayer.Play();
-            await tcs.Task;
+            _synthesizer.Speak(dialogue);
         }
     }
 }

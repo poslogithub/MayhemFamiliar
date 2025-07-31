@@ -1,6 +1,7 @@
 ﻿using System.Data.SQLite;
 using System.Text.RegularExpressions;
 using System.Globalization;
+using System;
 
 namespace MayhemFamiliar
 {
@@ -19,9 +20,9 @@ namespace MayhemFamiliar
             _connection.Open();
         }
 
-        public string? GetCardNameByGrpId(int grpId)
+        public string GetCardNameByGrpId(int grpId)
         {
-            string? loc = null;
+            string loc = null;
             string tableName = $"Localizations_{_uiCulture}";
             string locColumnName = "Loc";
             string sql = $"SELECT l.Loc FROM Cards c JOIN {tableName} l ON c.TitleId = l.LocId WHERE c.GrpId = @GrpId AND l.Formatted = 1";
@@ -38,7 +39,7 @@ namespace MayhemFamiliar
                 }
             }
 
-            if (loc is not null)
+            if (!String.IsNullOrEmpty(loc))
             {
                 loc = RemoveBrackets(loc);
             }
@@ -46,9 +47,9 @@ namespace MayhemFamiliar
             return loc;
         }
 
-        public string? GetCardNameByLocId(int locId)
+        public string GetCardNameByLocId(int locId)
         {
-            string? loc = null;
+            string loc = null;
 
             // 変数4: Localizations_変数2 テーブルから Loc を取得
             string tableName = $"Localizations_{_uiCulture}";
@@ -65,7 +66,7 @@ namespace MayhemFamiliar
                 }
             }
 
-            if (loc is not null)
+            if (!String.IsNullOrEmpty(loc))
             {
                 loc = RemoveBrackets(loc);
             }

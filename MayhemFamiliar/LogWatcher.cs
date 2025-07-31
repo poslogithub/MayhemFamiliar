@@ -1,5 +1,8 @@
 ﻿using MayhemFamiliar.QueueManager;
+using System;
 using System.Diagnostics;
+using System.IO;
+using System.Threading;
 
 namespace MayhemFamiliar
 {
@@ -46,16 +49,16 @@ namespace MayhemFamiliar
             string line;
             try
             { 
-                using StreamReader reader = _powershell.StandardOutput;
+                StreamReader reader = _powershell.StandardOutput;
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
                     // _log.Invoke($"{this.GetType().Name}: {line}");
-                    if (line.StartsWith('{') && line.EndsWith('}'))
+                    if (line.StartsWith("{") && line.EndsWith("}"))
                     {
                         // 単一行JSON
                         JsonQueue.Queue.Enqueue(line);
                     }
-                    else if (line.StartsWith('{'))
+                    else if (line.StartsWith("{"))
                     {
                         // 複数行JSONの開始
                         jsonBuilder = line;

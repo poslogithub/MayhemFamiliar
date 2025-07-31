@@ -1,4 +1,6 @@
-﻿namespace MayhemFamiliar
+﻿using System;
+
+namespace MayhemFamiliar
 {
     internal static class LogLevel
     {

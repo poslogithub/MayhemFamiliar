@@ -1,22 +1,40 @@
+ï»¿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Forms;
 
 namespace MayhemFamiliar
 {
     public partial class MainForm : Form
     {
-        // private CardData? _cardData;
-        private LogWatcher? _logWatcer;
-        private JsonParser? _jsonParser;
-        private DialogueGenerator? _dialogueGenerator;
-        private Speaker? _speaker;
-        private CancellationTokenSource? _ctsLogWatcher, _ctsJsonParser, _ctsDialogueGenerator, _ctsSpeaker;
-        private const string DetailedLogEnable = "DETAILED LOGS: ENABLED";
+        private LogWatcher _logWatcer;
+        private JsonParser _jsonParser;
+        private DialogueGenerator _dialogueGenerator;
+        private Speaker _speaker;
+        private CancellationTokenSource _ctsLogWatcher, _ctsJsonParser, _ctsDialogueGenerator, _ctsSpeaker;
+
+        private const string MtgaProcessName = "MTGA";
+
+        // LogWatcherç”¨
+        private const string DetailedLogEnabled = "DETAILED LOGS: ENABLED";
         private const string DefaultLogFileName = "Player.log";
         private static readonly string DefaultUserLogDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "AppData", "LocalLow", "Wizards Of The Coast", "MTGA"
         );
         private string _logFilePath;
+
+        // JsonParserç”¨
+        private const string DefaultCardDatabaseDirectory = @"C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Downloads\Raw";
+        private const string CardDatabaseFileNamePattern = @"Raw_CardDatabase_.*\.mtga";
+        private string _cardDatabaseFilePath;
+
 
         public MainForm()
         {
@@ -28,47 +46,114 @@ namespace MayhemFamiliar
         {
             // var configJson = JObject.Parse(@"{""Config"": { ""MtgaDataDirPath"": ""C:\\Program Files\\Wizards of the Coast\\MTGA\\MTGA_Data\\Downloads\\Raw\\Raw_CardDatabase_96e0ea3603a307b5cd9a2de7f4dbcafc.mtga"", ""MtgaLogDirPath"": ""C:\\Program Files\\Wizards of the Coast\\MTGA\\MTGA_Data\\Logs\\Logs"" } }");
 
-            // SQLiteƒf[ƒ^ƒtƒ@ƒCƒ‹‚ÌƒpƒX‚ğw’è‚µ‚Ä‚­‚¾‚³‚¢
-            // string dbFilePath = @"C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Downloads\Raw\Raw_CardDatabase_96e0ea3603a307b5cd9a2de7f4dbcafc.mtga";
-            // _cardData = new CardData(dbFilePath);
+            // LoggeråˆæœŸåŒ–
             Logger.Initialize(LogToTextBox);
 
+            // MTG Arenaèµ·å‹•ç¢ºèª
+            Logger.Instance.Log($"{this.GetType().Name}: MTG Arenaèµ·å‹•ç¢ºèª");
+            while (!Util.IsProcessRunning(MtgaProcessName))
+            {
+                Boolean ignore = false;
+                Logger.Instance.Log($"{this.GetType().Name}: MTG ArenaãŒèµ·å‹•ã—ã¦ã„ã¾ã›ã‚“ã€‚", LogLevel.Error);
+                DialogResult result = MessageBox.Show(
+                    "MTG ArenaãŒèµ·å‹•ã—ã¦ã„ã¾ã›ã‚“ã€‚",
+                    "MTG Arenaèµ·å‹•ç¢ºèª", 
+                    MessageBoxButtons.AbortRetryIgnore, 
+                    MessageBoxIcon.Warning);
+                switch (result)
+                {
+                    case DialogResult.Abort:
+                        Logger.Instance.Log($"{this.GetType().Name}: ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã‚’çµ‚äº†ã—ã¾ã™ã€‚");
+                        Application.Exit();
+                        return;
+                    case DialogResult.Retry:
+                        Logger.Instance.Log($"{this.GetType().Name}: MTG Arenaã®èµ·å‹•ã‚’å†ç¢ºèªã—ã¾ã™ã€‚");
+                        break;
+                    case DialogResult.Ignore:
+                        Logger.Instance.Log($"{this.GetType().Name}: MTG Arenaã®èµ·å‹•ã‚’ç„¡è¦–ã—ã¾ã™ã€‚", LogLevel.Warning);
+                        ignore = true;
+                        break;
+                    default:
+                        Logger.Instance.Log($"{this.GetType().Name}: ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã‚’çµ‚äº†ã—ã¾ã™ã€‚");
+                        Application.Exit();
+                        return;
+                }
+                if (ignore) break;
+            }
+
+
+            // ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«å­˜åœ¨ç¢ºèª
+            _logFilePath = Path.Combine(DefaultUserLogDirectory, DefaultLogFileName);
+            while (!File.Exists(_logFilePath))
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ« {_logFilePath} ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚", LogLevel.Error);
+                DialogResult result = MessageBox.Show(
+                    $"MTG Arenaã®ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ« {_logFilePath} ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã§ã—ãŸã€‚{Environment.NewLine}æ¬¡ã«è¡¨ç¤ºã•ã‚Œã‚‹ãƒ€ã‚¤ã‚¢ãƒ­ã‚°ã§ Player.log ãŒå­˜åœ¨ã™ã‚‹ãƒ•ã‚©ãƒ«ãƒ€ã‚’é¸æŠã—ã¦ãã ã•ã„ã€‚", 
+                    "MTG Arenaãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«å­˜åœ¨ç¢ºèª", 
+                    MessageBoxButtons.OKCancel, 
+                    MessageBoxIcon.Warning);
+                switch (result)
+                {
+                    case DialogResult.OK:
+                        _logFilePath = GetLogFilePath();
+                        break;
+                    case DialogResult.Cancel:
+                        Logger.Instance.Log($"{this.GetType().Name}: ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã‚’çµ‚äº†ã—ã¾ã™ã€‚");
+                        Application.Exit();
+                        return;
+                    default:
+                        Logger.Instance.Log($"{this.GetType().Name}: ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã‚’çµ‚äº†ã—ã¾ã™ã€‚");
+                        Application.Exit();
+                        return;
+                }
+            }
+            Logger.Instance.Log($"{this.GetType().Name}: ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«: {_logFilePath}");
+
+            // è©³ç´°ãƒ­ã‚°æœ‰åŠ¹ç¢ºèª
+            if (CheckDetailedLog())
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: è©³ç´°ãƒ­ã‚°ãŒæœ‰åŠ¹");
+            }
+            else
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: è©³ç´°ãƒ­ã‚°ãŒç„¡åŠ¹");
+                MessageBox.Show(
+                    $"MTG Arenaã®è©³ç´°ãƒ­ã‚°ãŒæœ‰åŠ¹åŒ–ã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚{Environment.NewLine}MTG Arenaã®ãƒ›ãƒ¼ãƒ ç”»é¢ã‹ã‚‰{Environment.NewLine}[è¨­å®š] > [ã‚¢ã‚«ã‚¦ãƒ³ãƒˆ] > [è©³ç´°ãƒ­ã‚°ï¼ˆãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã®ã‚µãƒãƒ¼ãƒˆï¼‰]{Environment.NewLine}ã«ãƒã‚§ãƒƒã‚¯ã‚’å…¥ã‚ŒãŸå¾Œã€MTG Arenaã¨æœ¬ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã‚’å†èµ·å‹•ã—ã¦ãã ã•ã„ã€‚", 
+                    "MTG Arena è©³ç´°ãƒ­ã‚°æœ‰åŠ¹ç¢ºèª", 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Warning);
+                Application.Exit();
+                return;
+            }
+
+            // ã‚«ãƒ¼ãƒ‰ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ãƒ•ã‚¡ã‚¤ãƒ«å­˜åœ¨ç¢ºèª
+            // TODO
             try
             {
-                _logFilePath = GetLogFilePath();
+                _cardDatabaseFilePath = GetCardDatabaseFilePath();
             }
             catch (DirectoryNotFoundException ex)
             {
-                Logger.Instance.Log($"{this.GetType().Name}: ƒƒOƒfƒBƒŒƒNƒgƒŠ {ex.Message} ‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ", LogLevel.Error);
-                MessageBox.Show($"ƒƒOƒfƒBƒŒƒNƒgƒŠ {ex.Message} ‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñBƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğI—¹‚µ‚Ü‚·B", "ƒGƒ‰[", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Logger.Instance.Log($"{this.GetType().Name}: ã‚«ãƒ¼ãƒ‰ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª {ex.Message} ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“", LogLevel.Error);
+                MessageBox.Show($"ã‚«ãƒ¼ãƒ‰ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª {ex.Message} ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã‚’çµ‚äº†ã—ã¾ã™ã€‚", "ã‚¨ãƒ©ãƒ¼", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
                 return;
             }
             catch (FileNotFoundException ex)
             {
-                Logger.Instance.Log($"{this.GetType().Name}: ƒƒOƒtƒ@ƒCƒ‹ {ex.Message} ‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ: {ex.Message}", LogLevel.Error);
-                MessageBox.Show("ƒƒOƒtƒ@ƒCƒ‹‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñBƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğI—¹‚µ‚Ü‚·B", "ƒGƒ‰[", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Logger.Instance.Log($"{this.GetType().Name}: ã‚«ãƒ¼ãƒ‰ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ãƒ•ã‚¡ã‚¤ãƒ« {ex.Message} ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“: {ex.Message}", LogLevel.Error);
+                MessageBox.Show("ã‚«ãƒ¼ãƒ‰ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ãƒ•ã‚¡ã‚¤ãƒ«ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã‚’çµ‚äº†ã—ã¾ã™ã€‚", "ã‚¨ãƒ©ãƒ¼", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 Application.Exit();
                 return;
             }
-            Logger.Instance.Log($"{this.GetType().Name}: ƒƒOƒtƒ@ƒCƒ‹: {_logFilePath}");
-
-            // Ú×ƒƒO—LŒøŠm”F
-            if (CheckDetailedLog())
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: Ú×ƒƒO‚ª—LŒø");
-            }
-            else
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: Ú×ƒƒO‚ª–³Œø");
-            }
+            Logger.Instance.Log($"{this.GetType().Name}: ã‚«ãƒ¼ãƒ‰ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹ãƒ•ã‚¡ã‚¤ãƒ«: {_cardDatabaseFilePath}");
 
 
             _logWatcer = new LogWatcher(_logFilePath);
             _ctsLogWatcher = new CancellationTokenSource();
             Task.Run(() => _logWatcer.Start(_ctsLogWatcher.Token));
 
-            _jsonParser = new JsonParser();
+            _jsonParser = new JsonParser(_cardDatabaseFilePath);
             _ctsJsonParser = new CancellationTokenSource();
             Task.Run(() => _jsonParser.Start(_ctsJsonParser.Token));
 
@@ -87,7 +172,7 @@ namespace MayhemFamiliar
             _ctsLogWatcher?.Dispose();
         }
 
-        // TextBox‚ÉƒƒO‚ğ’Ç‰ÁiUIƒXƒŒƒbƒh‚ÅˆÀ‘S‚ÉÀsj
+        // TextBoxã«ãƒ­ã‚°ã‚’è¿½åŠ ï¼ˆUIã‚¹ãƒ¬ãƒƒãƒ‰ã§å®‰å…¨ã«å®Ÿè¡Œï¼‰
         private void LogToTextBox(string message)
         {
             AppendLog(message);
@@ -97,12 +182,12 @@ namespace MayhemFamiliar
         {
             if (textBoxLog.InvokeRequired)
             {
-                textBoxLog.Invoke(() =>
+                textBoxLog.Invoke(new Action(() =>
                 {
                     textBoxLog.AppendText($"{DateTime.Now:HH:mm:ss} - {message}{Environment.NewLine}");
                     textBoxLog.SelectionStart = textBoxLog.TextLength;
                     textBoxLog.ScrollToCaret();
-                });
+                }));
 
             }
             else
@@ -116,7 +201,7 @@ namespace MayhemFamiliar
         private string GetLogFilePath()
         {
             string logDirectory;
-            // ƒƒOƒfƒBƒŒƒNƒgƒŠŠm’è
+
             if (Directory.Exists(DefaultUserLogDirectory))
             {
                 logDirectory = DefaultUserLogDirectory;
@@ -127,51 +212,34 @@ namespace MayhemFamiliar
             }
             if (string.IsNullOrEmpty(logDirectory))
             {
-                throw new DirectoryNotFoundException(logDirectory);
-            }
-
-            // ƒƒOƒtƒ@ƒCƒ‹Šm’è
-            /*
-            logFile = this.GetLatestLogFile(logDirectory);
-            if (String.IsNullOrEmpty(_logFilePath))
-            {
-                throw new FileNotFoundException(logDirectory);
-            }
-            */
-            return Path.Combine(logDirectory, DefaultLogFileName);
-        }
-
-        private string GetLatestLogFile(string logDirectory)
-        {
-            if (!Directory.Exists(logDirectory))
-            {
                 return "";
             }
 
-            return Directory
-                .GetFiles(logDirectory, "*.log")
-                .Select(f => new FileInfo(f))
-                .OrderByDescending(f => f.LastWriteTime)
-                .FirstOrDefault()?.FullName ?? "";
+            return Path.Combine(logDirectory, DefaultLogFileName);
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+
         }
 
         private static string SelectDirectory()
         {
             using (var dialog = new FolderBrowserDialog())
             {
-                // ƒ_ƒCƒAƒƒO‚Ìİ’èiƒIƒvƒVƒ‡ƒ“j
-                dialog.ShowNewFolderButton = false; // V‚µ‚¢ƒtƒHƒ‹ƒ_ì¬ƒ{ƒ^ƒ“‚Ì•\¦iƒfƒtƒHƒ‹ƒg: truej
+                // ãƒ€ã‚¤ã‚¢ãƒ­ã‚°ã®è¨­å®šï¼ˆã‚ªãƒ—ã‚·ãƒ§ãƒ³ï¼‰
+                dialog.ShowNewFolderButton = false; // æ–°ã—ã„ãƒ•ã‚©ãƒ«ãƒ€ä½œæˆãƒœã‚¿ãƒ³ã®è¡¨ç¤ºï¼ˆãƒ‡ãƒ•ã‚©ãƒ«ãƒˆ: trueï¼‰
 
-                // ƒ_ƒCƒAƒƒO‚ğ•\¦
+                // ãƒ€ã‚¤ã‚¢ãƒ­ã‚°ã‚’è¡¨ç¤º
                 DialogResult result = dialog.ShowDialog();
 
-                // ƒ†[ƒU[‚ªuOKv‚ğƒNƒŠƒbƒN‚µ‚½ê‡A‘I‘ğ‚³‚ê‚½ƒpƒX‚ğ•Ô‚·
+                // ãƒ¦ãƒ¼ã‚¶ãƒ¼ãŒã€ŒOKã€ã‚’ã‚¯ãƒªãƒƒã‚¯ã—ãŸå ´åˆã€é¸æŠã•ã‚ŒãŸãƒ‘ã‚¹ã‚’è¿”ã™
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
                 {
                     return dialog.SelectedPath;
                 }
 
-                // ƒLƒƒƒ“ƒZƒ‹‚Ü‚½‚Í—LŒø‚ÈƒpƒX‚ª‘I‘ğ‚³‚ê‚È‚©‚Á‚½ê‡
+                // ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã¾ãŸã¯æœ‰åŠ¹ãªãƒ‘ã‚¹ãŒé¸æŠã•ã‚Œãªã‹ã£ãŸå ´åˆ
                 return "";
             }
         }
@@ -179,16 +247,16 @@ namespace MayhemFamiliar
         {
             try
             {
-                // ƒtƒ@ƒCƒ‹ƒTƒCƒY‚ğæ“¾
+                // ãƒ•ã‚¡ã‚¤ãƒ«ã‚µã‚¤ã‚ºã‚’å–å¾—
                 var fileInfo = new FileInfo(_logFilePath);
-                // ’Ç‹L•”•ª‚ğ“Ç‚İ‚Ş
+                // è¿½è¨˜éƒ¨åˆ†ã‚’èª­ã¿è¾¼ã‚€
                 using (var fileStream = new FileStream(_logFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 using (var reader = new StreamReader(fileStream, Encoding.UTF8))
                 {
-                    string? line = reader.ReadLine();
-                    while (line is not null)
+                    string line = reader.ReadLine();
+                    while (line != null)
                     {
-                        if (line.Contains(DetailedLogEnable))
+                        if (line.Contains(DetailedLogEnabled))
                         {
                             return true;
                         }
@@ -198,11 +266,46 @@ namespace MayhemFamiliar
             }
             catch (IOException ex)
             {
-                Console.WriteLine($"{this.GetType().Name}: Ú×ƒƒO—LŒøŠm”F‚Å—áŠO‚ª”­¶");
-                Console.WriteLine($"{this.GetType().Name}: “Ç‚İ‚İƒGƒ‰[: {ex.Message}");
+                Console.WriteLine($"{this.GetType().Name}: è©³ç´°ãƒ­ã‚°æœ‰åŠ¹ç¢ºèªã§ä¾‹å¤–ãŒç™ºç”Ÿ");
+                Console.WriteLine($"{this.GetType().Name}: èª­ã¿è¾¼ã¿ã‚¨ãƒ©ãƒ¼: {ex.Message}");
             }
             return false;
         }
+
+        private static string GetCardDatabaseFilePath()
+        {
+            string cardDatabaseDirectoryPath;
+            if (Directory.Exists(DefaultCardDatabaseDirectory))
+            {
+                cardDatabaseDirectoryPath = DefaultCardDatabaseDirectory;
+            }
+            else
+            {
+                cardDatabaseDirectoryPath = SelectDirectory();
+            }
+
+            if (string.IsNullOrEmpty(cardDatabaseDirectoryPath))
+            {
+                throw new DirectoryNotFoundException(cardDatabaseDirectoryPath);
+            }
+
+            // ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªå†…ã®ãƒ•ã‚¡ã‚¤ãƒ«ã‚’æ¤œç´¢ã—ã€æ­£è¦è¡¨ç¾ã«ãƒãƒƒãƒã™ã‚‹ã‚‚ã®ã®ã†ã¡ã€ã‚µã‚¤ã‚ºãŒæœ€å¤§ã®ã‚‚ã®ã‚’å–å¾—
+            // â€»ç¨€ã«ã‚µã‚¤ã‚ºãŒ0ã®ãƒ•ã‚¡ã‚¤ãƒ«ãŒå­˜åœ¨ã™ã‚‹ãŸã‚
+            var cardDatabaseFile = Directory
+                .GetFiles(cardDatabaseDirectoryPath)
+                .Where(file => Regex.IsMatch(Path.GetFileName(file), CardDatabaseFileNamePattern))
+                .OrderByDescending(file => new FileInfo(file).Length)
+                .FirstOrDefault();
+
+            // ãƒãƒƒãƒã™ã‚‹ãƒ•ã‚¡ã‚¤ãƒ«ãŒç„¡ã„ã‹ã€ãƒ•ã‚¡ã‚¤ãƒ«ãŒå­˜åœ¨ã—ãªã„å ´åˆã¯ä¾‹å¤–ã‚’æŠ•ã’ã‚‹
+            if (string.IsNullOrEmpty(cardDatabaseFile) || !File.Exists(cardDatabaseFile))
+            {
+                throw new FileNotFoundException(cardDatabaseFile);
+            }
+
+            return Path.GetFullPath(cardDatabaseFile);
+        }
+
 
     }
 }

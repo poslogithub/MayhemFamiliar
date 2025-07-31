@@ -1,5 +1,9 @@
 ﻿using MayhemFamiliar.QueueManager;
+using System;
 using System.Globalization;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MayhemFamiliar
 {
@@ -152,7 +156,8 @@ namespace MayhemFamiliar
             }
 
             // 半角空白で分割、最大3つに制限
-            string[] words = eventString.Split(' ', 3);
+            // string[] words = eventString.Split(' ', 3);
+            string[] words = eventString.Split(new char[]{' '}, 3);
 
             // 配列の長さに応じて割り当て
             if (words.Length >= 1)

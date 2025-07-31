@@ -1,7 +1,12 @@
 ﻿// JsonParser.cs
 using MayhemFamiliar.QueueManager;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MayhemFamiliar
 {
@@ -46,12 +51,12 @@ namespace MayhemFamiliar
         public const int OpponentsLibrary = 36;
         public const int OpponentsGraveyard = 37;
         public const int OpponentsSideboard = 38;
-        public static List<int> YourZones = [
+        public static List<int> YourZones = new List<int>() {
             YourRevealed, YourHand, YourLibrary, YourGraveyard, YourSideboard
-        ];
-        public static List<int> OpponentsZones = [
+        };
+        public static List<int> OpponentsZones = new List<int>() {
             OpponentsRevealed, OpponentsHand, OpponentsLibrary, OpponentsGraveyard, OpponentsSideboard
-        ];
+        };
     }
     static class GreMessageType
     {
@@ -73,9 +78,9 @@ namespace MayhemFamiliar
         public const string Ability = "GameObjectType_Ability";
         public const string Token = "GameObjectType_Token";
         public const string MDFCBack = "GameObjectType_MDFCBack";
-        public static List<string> NamableObjectTypes = [
+        public static List<string> NamableObjectTypes = new List<string>() {
             Card, Token, MDFCBack
-        ];
+        };
     }
     static class GameStage
     {
@@ -238,40 +243,23 @@ namespace MayhemFamiliar
     }
     internal class JsonParser
     {
+        private readonly string _cardDatabaseFile;
         private Dictionary<int, GameObject> _gameObjects;
-        private string _cardDatabaseFilePath;
-        private string _cardDatabaseDirectoryPath = @"C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Downloads\Raw";
         private CardData _cardData;
         private TurnInfo _turnInfo = new TurnInfo();
         private int _gameStateId = 0;
 
-        public JsonParser(string cardDatabaseDirectoryPath = "")
+        public JsonParser(string cardDatabaseFile)
         {
+            _cardDatabaseFile = cardDatabaseFile;
             _gameObjects = new Dictionary<int, GameObject>();
-
-
-            if (!String.IsNullOrEmpty(cardDatabaseDirectoryPath))
-            {
-                _cardDatabaseDirectoryPath = cardDatabaseDirectoryPath;
-            }
-            if (!Directory.Exists(_cardDatabaseDirectoryPath))
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースディレクトリが見つかりません: {_cardDatabaseDirectoryPath}", LogLevel.Error);
-                throw new DirectoryNotFoundException($"カードデータベースディレクトリが見つかりません: {_cardDatabaseDirectoryPath}");
-            }
-            string? cardDatabaseFileName = GetCardDatabaseFileName(_cardDatabaseDirectoryPath);
-            if (String.IsNullOrEmpty(cardDatabaseFileName))
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイルが見つかりません。ディレクトリ内にRaw_CardDatabase_*.mtgaファイルが存在することを確認してください。{_cardDatabaseDirectoryPath}", LogLevel.Error);
-                throw new FileNotFoundException($"カードデータベースファイルが見つかりません。ディレクトリ内にRaw_CardDatabase_*.mtgaファイルが存在することを確認してください。{_cardDatabaseDirectoryPath}");
-            }
-            _cardDatabaseFilePath = Path.Combine(_cardDatabaseDirectoryPath, GetCardDatabaseFileName(_cardDatabaseDirectoryPath));
-            Logger.Instance.Log($"{this.GetType().Name}: CardDatabase接続開始");
-            _cardData = new CardData(_cardDatabaseFilePath);
         }
 
         public async Task Start(CancellationToken cancellationToken)
         {
+            _cardData = new CardData(_cardDatabaseFile);
+            Logger.Instance.Log($"{this.GetType().Name}: CardDatabase接続");
+
             // TODO: tryは全部各Process処理の中に入れる
             Logger.Instance.Log($"{this.GetType().Name}: 開始");
             while (!cancellationToken.IsCancellationRequested)
@@ -302,7 +290,7 @@ namespace MayhemFamiliar
         private void ProcessJson(string jsonString)
         {
             // JSONパース
-            JObject? json = null;
+            JObject json = null;
             try
             {
                 json = JObject.Parse(jsonString);
@@ -321,7 +309,7 @@ namespace MayhemFamiliar
             }
 
             // GreToClientMessages
-            if (json[Key.GreToClientEvent]?[Key.GreToClientMessages] is not null)
+            if (json[Key.GreToClientEvent]?[Key.GreToClientMessages] != null)
             {
                 foreach (var message in json[Key.GreToClientEvent][Key.GreToClientMessages])
                 {
@@ -355,6 +343,12 @@ namespace MayhemFamiliar
         }
         private void ProcesseGameStateTypeFullMessage(JToken message)
         {
+            // GameObjectの初期化
+            _gameObjects.Clear();
+
+            // turnInfoの処理（TurnInfoの更新、ターンの開始を判定）
+            processTurnInfo(message[TurnInfo.Key]);
+
             // gameInfoの処理
             processGameInfo(message[Key.GameInfo]);
 
@@ -408,7 +402,7 @@ namespace MayhemFamiliar
                 switch (annotation[Key.Type]?[0]?.ToString())
                 {
                     case AnnotationType.ObjectIdChanged
-                        when annotation[Key.Details] is not null:
+                        when annotation[Key.Details] != null:
                         {
                             // オブジェクトIDの変更
                             int origId = (int)annotation[Key.Details][0][Key.ValueInt32][0];
@@ -429,7 +423,7 @@ namespace MayhemFamiliar
                             break;
                         }
                     case AnnotationType.ZoneTransfer
-                        when annotation[Key.Details] is not null:
+                        when annotation[Key.Details] != null:
                         {
                             // ゾーンの移動
                             int id = (int)(annotation[Key.Id] ?? Unknown.Id);
@@ -476,7 +470,7 @@ namespace MayhemFamiliar
 
         private void processTurnInfo(JToken gameInfo)
         {
-            if (gameInfo?[TurnInfo.Key] is not null)
+            if (gameInfo?[TurnInfo.Key] != null)
             {
                 // チェック
                 if (gameInfo[TurnInfo.Key][TurnInfo.PhaseKey]?.ToString() == Phase.Beginning && 
@@ -513,7 +507,7 @@ namespace MayhemFamiliar
 
             foreach (var zone in zones)
             {
-                if (zone[Key.ObjectInstanceIds] is not null)
+                if (zone[Key.ObjectInstanceIds] != null)
                 {
                     foreach (int oiid in zone[Key.ObjectInstanceIds])
                     {
@@ -555,7 +549,7 @@ namespace MayhemFamiliar
                 _gameObjects[instanceId].OwnerSeatId = (int)(gameObject[Key.OwnerSeatId] ?? _gameObjects[instanceId].OwnerSeatId);
                 _gameObjects[instanceId].ControllerSeatId = (int)(gameObject[Key.ControllerSeatId] ?? _gameObjects[instanceId].ControllerSeatId);
                 // TODO ほかにも更新
-                if (gameObject[Key.Name] is not null)
+                if (gameObject[Key.Name] != null)
                 {
                     _gameObjects[instanceId].Name = _cardData.GetCardNameByLocId((int)gameObject[Key.Name]) ?? _gameObjects[instanceId].Name;
                 }
@@ -571,34 +565,6 @@ namespace MayhemFamiliar
             }
         }
 
-        private static string? GetCardDatabaseFileName(string cardDatabaseDirectoryPath)
-        {
-            try
-            {
-                // ディレクトリが存在しない場合はnullを返す
-                if (!Directory.Exists(cardDatabaseDirectoryPath))
-                {
-                    return null;
-                }
 
-                // 正規表現パターン
-                string pattern = @"Raw_CardDatabase_.*\.mtga";
-
-                // ディレクトリ内のファイルを検索し、正規表現にマッチするものを取得
-                var cardDatabaseFile = Directory
-                    .GetFiles(cardDatabaseDirectoryPath)
-                    .Where(file => Regex.IsMatch(Path.GetFileName(file), pattern))
-                    .OrderByDescending(file => new FileInfo(file).LastWriteTimeUtc)
-                    .FirstOrDefault();
-
-                // マッチするファイルがあればそのファイル名を、なければnullを返す
-                return cardDatabaseFile != null ? Path.GetFileName(cardDatabaseFile) : null;
-            }
-            catch (Exception)
-            {
-                // 例外が発生した場合もnullを返す
-                return null;
-            }
-        }
     }
 }
