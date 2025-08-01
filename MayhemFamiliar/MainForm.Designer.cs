@@ -30,17 +30,17 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.tabControl1 = new System.Windows.Forms.TabControl();
-            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.tabPageLog = new System.Windows.Forms.TabPage();
             this.textBoxLog = new System.Windows.Forms.TextBox();
-            this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.tabPageSpeaker = new System.Windows.Forms.TabPage();
             this.tabControl1.SuspendLayout();
-            this.tabPage1.SuspendLayout();
+            this.tabPageLog.SuspendLayout();
             this.SuspendLayout();
             // 
             // tabControl1
             // 
-            this.tabControl1.Controls.Add(this.tabPage1);
-            this.tabControl1.Controls.Add(this.tabPage2);
+            this.tabControl1.Controls.Add(this.tabPageLog);
+            this.tabControl1.Controls.Add(this.tabPageSpeaker);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl1.Location = new System.Drawing.Point(0, 0);
             this.tabControl1.Name = "tabControl1";
@@ -48,16 +48,16 @@
             this.tabControl1.Size = new System.Drawing.Size(800, 450);
             this.tabControl1.TabIndex = 0;
             // 
-            // tabPage1
+            // tabPageLog
             // 
-            this.tabPage1.Controls.Add(this.textBoxLog);
-            this.tabPage1.Location = new System.Drawing.Point(4, 22);
-            this.tabPage1.Name = "tabPage1";
-            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(792, 424);
-            this.tabPage1.TabIndex = 0;
-            this.tabPage1.Text = "tabPage1";
-            this.tabPage1.UseVisualStyleBackColor = true;
+            this.tabPageLog.Controls.Add(this.textBoxLog);
+            this.tabPageLog.Location = new System.Drawing.Point(4, 22);
+            this.tabPageLog.Name = "tabPageLog";
+            this.tabPageLog.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPageLog.Size = new System.Drawing.Size(792, 424);
+            this.tabPageLog.TabIndex = 0;
+            this.tabPageLog.Text = "ログ";
+            this.tabPageLog.UseVisualStyleBackColor = true;
             // 
             // textBoxLog
             // 
@@ -70,15 +70,15 @@
             this.textBoxLog.Size = new System.Drawing.Size(786, 418);
             this.textBoxLog.TabIndex = 0;
             // 
-            // tabPage2
+            // tabPageSpeaker
             // 
-            this.tabPage2.Location = new System.Drawing.Point(4, 22);
-            this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(792, 424);
-            this.tabPage2.TabIndex = 1;
-            this.tabPage2.Text = "tabPage2";
-            this.tabPage2.UseVisualStyleBackColor = true;
+            this.tabPageSpeaker.Location = new System.Drawing.Point(4, 22);
+            this.tabPageSpeaker.Name = "tabPageSpeaker";
+            this.tabPageSpeaker.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPageSpeaker.Size = new System.Drawing.Size(792, 424);
+            this.tabPageSpeaker.TabIndex = 1;
+            this.tabPageSpeaker.Text = "話者";
+            this.tabPageSpeaker.UseVisualStyleBackColor = true;
             // 
             // MainForm
             // 
@@ -90,8 +90,8 @@
             this.Name = "MainForm";
             this.Text = "MayhemFamiliar";
             this.tabControl1.ResumeLayout(false);
-            this.tabPage1.ResumeLayout(false);
-            this.tabPage1.PerformLayout();
+            this.tabPageLog.ResumeLayout(false);
+            this.tabPageLog.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -99,8 +99,8 @@
         #endregion
 
         private System.Windows.Forms.TabControl tabControl1;
-        private System.Windows.Forms.TabPage tabPage1;
-        private System.Windows.Forms.TabPage tabPage2;
+        private System.Windows.Forms.TabPage tabPageLog;
+        private System.Windows.Forms.TabPage tabPageSpeaker;
         private System.Windows.Forms.TextBox textBoxLog;
     }
 }

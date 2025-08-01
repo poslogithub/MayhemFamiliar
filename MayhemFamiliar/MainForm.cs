@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Forms;
 
 namespace MayhemFamiliar
@@ -23,15 +21,9 @@ namespace MayhemFamiliar
 
         // LogWatcher用
         private const string DetailedLogEnabled = "DETAILED LOGS: ENABLED";
-        private const string DefaultLogFileName = "Player.log";
-        private static readonly string DefaultUserLogDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "AppData", "LocalLow", "Wizards Of The Coast", "MTGA"
-        );
-        private string _logFilePath;
+        private string _mtgaLogFilePath;
 
         // JsonParser用
-        private const string DefaultCardDatabaseDirectory = @"C:\Program Files\Wizards of the Coast\MTGA\MTGA_Data\Downloads\Raw";
         private const string CardDatabaseFileNamePattern = @"Raw_CardDatabase_.*\.mtga";
         private string _cardDatabaseFilePath;
 
@@ -44,10 +36,10 @@ namespace MayhemFamiliar
         }
         private void Form_Shown(object sender, EventArgs e)
         {
-            // var configJson = JObject.Parse(@"{""Config"": { ""MtgaDataDirPath"": ""C:\\Program Files\\Wizards of the Coast\\MTGA\\MTGA_Data\\Downloads\\Raw\\Raw_CardDatabase_96e0ea3603a307b5cd9a2de7f4dbcafc.mtga"", ""MtgaLogDirPath"": ""C:\\Program Files\\Wizards of the Coast\\MTGA\\MTGA_Data\\Logs\\Logs"" } }");
-
             // Logger初期化
             Logger.Initialize(LogToTextBox);
+
+            // TODO: コンフィグ読み込み
 
             // MTG Arena起動確認
             Logger.Instance.Log($"{this.GetType().Name}: MTG Arena起動確認");
@@ -62,10 +54,6 @@ namespace MayhemFamiliar
                     MessageBoxIcon.Warning);
                 switch (result)
                 {
-                    case DialogResult.Abort:
-                        Logger.Instance.Log($"{this.GetType().Name}: アプリケーションを終了します。");
-                        Application.Exit();
-                        return;
                     case DialogResult.Retry:
                         Logger.Instance.Log($"{this.GetType().Name}: MTG Arenaの起動を再確認します。");
                         break;
@@ -83,31 +71,28 @@ namespace MayhemFamiliar
 
 
             // ログファイル存在確認
-            _logFilePath = Path.Combine(DefaultUserLogDirectory, DefaultLogFileName);
-            while (!File.Exists(_logFilePath))
+            // TODO: 設定ファイルを参照する
+            _mtgaLogFilePath = GetInitMtgaLogFilePath();
+            while (!File.Exists(_mtgaLogFilePath))
             {
-                Logger.Instance.Log($"{this.GetType().Name}: ログファイル {_logFilePath} が見つかりません。", LogLevel.Error);
+                Logger.Instance.Log($"{this.GetType().Name}: ログファイル {_mtgaLogFilePath} が見つかりません。", LogLevel.Error);
                 DialogResult result = MessageBox.Show(
-                    $"MTG Arenaのログファイル {_logFilePath} が見つかりませんでした。{Environment.NewLine}次に表示されるダイアログで Player.log が存在するフォルダを選択してください。", 
+                    $"MTG Arenaのログファイル {_mtgaLogFilePath} が見つかりませんでした。{Environment.NewLine}次に表示されるダイアログで {DefaultValue.MtgaLogFileName} が存在するフォルダを選択してください。", 
                     "MTG Arenaログファイル存在確認", 
                     MessageBoxButtons.OKCancel, 
                     MessageBoxIcon.Warning);
                 switch (result)
                 {
                     case DialogResult.OK:
-                        _logFilePath = GetLogFilePath();
+                        _mtgaLogFilePath = GetMtgaLogFilePath();
                         break;
-                    case DialogResult.Cancel:
-                        Logger.Instance.Log($"{this.GetType().Name}: アプリケーションを終了します。");
-                        Application.Exit();
-                        return;
                     default:
                         Logger.Instance.Log($"{this.GetType().Name}: アプリケーションを終了します。");
                         Application.Exit();
                         return;
                 }
             }
-            Logger.Instance.Log($"{this.GetType().Name}: ログファイル: {_logFilePath}");
+            Logger.Instance.Log($"{this.GetType().Name}: ログファイル: {_mtgaLogFilePath}");
 
             // 詳細ログ有効確認
             if (CheckDetailedLog())
@@ -128,28 +113,30 @@ namespace MayhemFamiliar
 
             // カードデータベースファイル存在確認
             // TODO
-            try
+            _cardDatabaseFilePath = GetInitCardDatabaseFilePath();
+            while (!File.Exists(_cardDatabaseFilePath))
             {
-                _cardDatabaseFilePath = GetCardDatabaseFilePath();
-            }
-            catch (DirectoryNotFoundException ex)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースディレクトリ {ex.Message} が見つかりません", LogLevel.Error);
-                MessageBox.Show($"カードデータベースディレクトリ {ex.Message} が見つかりません。アプリケーションを終了します。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
-                return;
-            }
-            catch (FileNotFoundException ex)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル {ex.Message} が見つかりません: {ex.Message}", LogLevel.Error);
-                MessageBox.Show("カードデータベースファイルが見つかりません。アプリケーションを終了します。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Application.Exit();
-                return;
+                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル {CardDatabaseFileNamePattern} が見つかりません。", LogLevel.Error);
+                DialogResult result = MessageBox.Show(
+                    $"カードデータベースファイル {CardDatabaseFileNamePattern} が見つかりませんでした。{Environment.NewLine}次に表示されるダイアログで {CardDatabaseFileNamePattern} が存在するフォルダを選択してください。",
+                    "カードデータベースファイル存在確認",
+                    MessageBoxButtons.OKCancel,
+                    MessageBoxIcon.Warning);
+                switch (result)
+                {
+                    case DialogResult.OK:
+                        _cardDatabaseFilePath = GetCardDatabaseFilePath();
+                        break;
+                    default:
+                        Logger.Instance.Log($"{this.GetType().Name}: アプリケーションを終了します。");
+                        Application.Exit();
+                        return;
+                }
             }
             Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル: {_cardDatabaseFilePath}");
 
 
-            _logWatcer = new LogWatcher(_logFilePath);
+            _logWatcer = new LogWatcher(_mtgaLogFilePath);
             _ctsLogWatcher = new CancellationTokenSource();
             Task.Run(() => _logWatcer.Start(_ctsLogWatcher.Token));
 
@@ -198,13 +185,18 @@ namespace MayhemFamiliar
             }
         }
 
-        private string GetLogFilePath()
+        private string GetInitMtgaLogFilePath()
+        {
+            // TODO : 設定ファイルを参照する
+            return Path.Combine(DefaultValue.MtgaLogDirectory, DefaultValue.MtgaLogFileName);
+        }
+        private string GetMtgaLogFilePath()
         {
             string logDirectory;
 
-            if (Directory.Exists(DefaultUserLogDirectory))
+            if (Directory.Exists(DefaultValue.MtgaLogDirectory))
             {
-                logDirectory = DefaultUserLogDirectory;
+                logDirectory = DefaultValue.MtgaLogDirectory;
             }
             else
             {
@@ -215,7 +207,7 @@ namespace MayhemFamiliar
                 return "";
             }
 
-            return Path.Combine(logDirectory, DefaultLogFileName);
+            return Path.Combine(logDirectory, DefaultValue.MtgaLogFileName);
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -248,9 +240,9 @@ namespace MayhemFamiliar
             try
             {
                 // ファイルサイズを取得
-                var fileInfo = new FileInfo(_logFilePath);
+                var fileInfo = new FileInfo(_mtgaLogFilePath);
                 // 追記部分を読み込む
-                using (var fileStream = new FileStream(_logFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (var fileStream = new FileStream(_mtgaLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                 using (var reader = new StreamReader(fileStream, Encoding.UTF8))
                 {
                     string line = reader.ReadLine();
@@ -272,12 +264,39 @@ namespace MayhemFamiliar
             return false;
         }
 
-        private static string GetCardDatabaseFilePath()
+        private string GetInitCardDatabaseFilePath()
+        {             // TODO : 設定ファイルを参照する
+            return Path.Combine(DefaultValue.CardDatabaseDirectory, GetLargestCardDatabaseFilePath(DefaultValue.CardDatabaseDirectory));
+        }
+        private string GetLargestCardDatabaseFilePath(string cardDatabaseDirectoryPath)
+        {
+            // ディレクトリ内のファイルを検索し、正規表現にマッチするもののうち、サイズが最大のものを取得
+            // ※稀にサイズが0のファイルが存在するため
+            string cardDatabaseFile = "";
+            try
+            {
+                cardDatabaseFile = Directory
+                .GetFiles(cardDatabaseDirectoryPath)
+                .Where(file => Regex.IsMatch(Path.GetFileName(file), CardDatabaseFileNamePattern))
+                .OrderByDescending(file => new FileInfo(file).Length)
+                .FirstOrDefault();
+            }
+            catch
+            {
+                cardDatabaseFile = "";
+            }
+            if (String.IsNullOrEmpty(cardDatabaseFile))
+            {
+                return "";
+            }
+            return cardDatabaseFile;
+        }
+        private string GetCardDatabaseFilePath()
         {
             string cardDatabaseDirectoryPath;
-            if (Directory.Exists(DefaultCardDatabaseDirectory))
+            if (Directory.Exists(DefaultValue.CardDatabaseDirectory))
             {
-                cardDatabaseDirectoryPath = DefaultCardDatabaseDirectory;
+                cardDatabaseDirectoryPath = DefaultValue.CardDatabaseDirectory;
             }
             else
             {
@@ -286,21 +305,17 @@ namespace MayhemFamiliar
 
             if (string.IsNullOrEmpty(cardDatabaseDirectoryPath))
             {
-                throw new DirectoryNotFoundException(cardDatabaseDirectoryPath);
+                return "";
             }
 
             // ディレクトリ内のファイルを検索し、正規表現にマッチするもののうち、サイズが最大のものを取得
             // ※稀にサイズが0のファイルが存在するため
-            var cardDatabaseFile = Directory
-                .GetFiles(cardDatabaseDirectoryPath)
-                .Where(file => Regex.IsMatch(Path.GetFileName(file), CardDatabaseFileNamePattern))
-                .OrderByDescending(file => new FileInfo(file).Length)
-                .FirstOrDefault();
+            var cardDatabaseFile = GetLargestCardDatabaseFilePath(cardDatabaseDirectoryPath);
 
             // マッチするファイルが無いか、ファイルが存在しない場合は例外を投げる
             if (string.IsNullOrEmpty(cardDatabaseFile) || !File.Exists(cardDatabaseFile))
             {
-                throw new FileNotFoundException(cardDatabaseFile);
+                return "";
             }
 
             return Path.GetFullPath(cardDatabaseFile);
