@@ -33,8 +33,13 @@
             this.tabPageLog = new System.Windows.Forms.TabPage();
             this.textBoxLog = new System.Windows.Forms.TextBox();
             this.tabPageSpeaker = new System.Windows.Forms.TabPage();
+            this.listBoxVoices = new System.Windows.Forms.ListBox();
+            this.radioButtonSAPI = new System.Windows.Forms.RadioButton();
+            this.buttonTestSpeech = new System.Windows.Forms.Button();
+            this.radioButtonVoicevox = new System.Windows.Forms.RadioButton();
             this.tabControl1.SuspendLayout();
             this.tabPageLog.SuspendLayout();
+            this.tabPageSpeaker.SuspendLayout();
             this.SuspendLayout();
             // 
             // tabControl1
@@ -72,6 +77,10 @@
             // 
             // tabPageSpeaker
             // 
+            this.tabPageSpeaker.Controls.Add(this.radioButtonVoicevox);
+            this.tabPageSpeaker.Controls.Add(this.buttonTestSpeech);
+            this.tabPageSpeaker.Controls.Add(this.listBoxVoices);
+            this.tabPageSpeaker.Controls.Add(this.radioButtonSAPI);
             this.tabPageSpeaker.Location = new System.Drawing.Point(4, 22);
             this.tabPageSpeaker.Name = "tabPageSpeaker";
             this.tabPageSpeaker.Padding = new System.Windows.Forms.Padding(3);
@@ -79,6 +88,46 @@
             this.tabPageSpeaker.TabIndex = 1;
             this.tabPageSpeaker.Text = "話者";
             this.tabPageSpeaker.UseVisualStyleBackColor = true;
+            // 
+            // listBoxVoices
+            // 
+            this.listBoxVoices.FormattingEnabled = true;
+            this.listBoxVoices.ItemHeight = 12;
+            this.listBoxVoices.Location = new System.Drawing.Point(6, 76);
+            this.listBoxVoices.Name = "listBoxVoices";
+            this.listBoxVoices.Size = new System.Drawing.Size(778, 340);
+            this.listBoxVoices.TabIndex = 1;
+            // 
+            // radioButtonSAPI
+            // 
+            this.radioButtonSAPI.AutoSize = true;
+            this.radioButtonSAPI.Location = new System.Drawing.Point(6, 6);
+            this.radioButtonSAPI.Name = "radioButtonSAPI";
+            this.radioButtonSAPI.Size = new System.Drawing.Size(82, 16);
+            this.radioButtonSAPI.TabIndex = 0;
+            this.radioButtonSAPI.TabStop = true;
+            this.radioButtonSAPI.Text = "Speech API";
+            this.radioButtonSAPI.UseVisualStyleBackColor = true;
+            // 
+            // buttonTestSpeech
+            // 
+            this.buttonTestSpeech.Location = new System.Drawing.Point(671, 4);
+            this.buttonTestSpeech.Name = "buttonTestSpeech";
+            this.buttonTestSpeech.Size = new System.Drawing.Size(112, 24);
+            this.buttonTestSpeech.TabIndex = 2;
+            this.buttonTestSpeech.Text = "テスト発声";
+            this.buttonTestSpeech.UseVisualStyleBackColor = true;
+            // 
+            // radioButtonVoicevox
+            // 
+            this.radioButtonVoicevox.AutoSize = true;
+            this.radioButtonVoicevox.Location = new System.Drawing.Point(6, 28);
+            this.radioButtonVoicevox.Name = "radioButtonVoicevox";
+            this.radioButtonVoicevox.Size = new System.Drawing.Size(80, 16);
+            this.radioButtonVoicevox.TabIndex = 3;
+            this.radioButtonVoicevox.TabStop = true;
+            this.radioButtonVoicevox.Text = "VOICEVOX";
+            this.radioButtonVoicevox.UseVisualStyleBackColor = true;
             // 
             // MainForm
             // 
@@ -92,6 +141,8 @@
             this.tabControl1.ResumeLayout(false);
             this.tabPageLog.ResumeLayout(false);
             this.tabPageLog.PerformLayout();
+            this.tabPageSpeaker.ResumeLayout(false);
+            this.tabPageSpeaker.PerformLayout();
             this.ResumeLayout(false);
 
         }
@@ -102,6 +153,10 @@
         private System.Windows.Forms.TabPage tabPageLog;
         private System.Windows.Forms.TabPage tabPageSpeaker;
         private System.Windows.Forms.TextBox textBoxLog;
+        private System.Windows.Forms.RadioButton radioButtonSAPI;
+        private System.Windows.Forms.ListBox listBoxVoices;
+        private System.Windows.Forms.Button buttonTestSpeech;
+        private System.Windows.Forms.RadioButton radioButtonVoicevox;
     }
 }
 

@@ -260,7 +260,6 @@ namespace MayhemFamiliar
             _cardData = new CardData(_cardDatabaseFile);
             Logger.Instance.Log($"{this.GetType().Name}: CardDatabase接続");
 
-            // TODO: tryは全部各Process処理の中に入れる
             Logger.Instance.Log($"{this.GetType().Name}: 開始");
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -398,7 +397,6 @@ namespace MayhemFamiliar
 
             foreach (var annotation in annotations)
             {
-                // TODO
                 switch (annotation[Key.Type]?[0]?.ToString())
                 {
                     case AnnotationType.ObjectIdChanged
@@ -548,7 +546,6 @@ namespace MayhemFamiliar
                 _gameObjects[instanceId].Visible = gameObject[Visibility.Key]?.ToString() ?? _gameObjects[instanceId].Visible;
                 _gameObjects[instanceId].OwnerSeatId = (int)(gameObject[Key.OwnerSeatId] ?? _gameObjects[instanceId].OwnerSeatId);
                 _gameObjects[instanceId].ControllerSeatId = (int)(gameObject[Key.ControllerSeatId] ?? _gameObjects[instanceId].ControllerSeatId);
-                // TODO ほかにも更新
                 if (gameObject[Key.Name] != null)
                 {
                     _gameObjects[instanceId].Name = _cardData.GetCardNameByLocId((int)gameObject[Key.Name]) ?? _gameObjects[instanceId].Name;

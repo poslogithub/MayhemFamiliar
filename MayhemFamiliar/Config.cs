@@ -14,30 +14,49 @@ namespace MayhemFamiliar
         {
             if (!File.Exists(ConfigFileName))
             {
-                return new Config { };
+                return new Config();
             }
-            return JsonConvert.DeserializeObject<Config>(File.ReadAllText(ConfigFileName));
+
+            try
+            {
+                return JsonConvert.DeserializeObject<Config>(File.ReadAllText(ConfigFileName));
+
+            }
+            catch
+            {
+                return new Config();
+            }
         }
-        public static void Save(Config config)
+        public Boolean Save()
         {
-            string json = JsonConvert.SerializeObject(config, Formatting.Indented);
-            File.WriteAllText(ConfigFileName, json);
+            try
+            {
+                string json = JsonConvert.SerializeObject(this, Formatting.Indented);
+                File.WriteAllText(ConfigFileName, json);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
-        public string AppName { get; set; }
-        public int Version { get; set; }
-        public DatabaseConfig Database { get; set; } // ネストしたオブジェクト
-        public List<UserConfig> Users { get; set; } // ネストしたリスト
+        public MtgaConfig Mtga { get; set; } = new MtgaConfig();
+        public SpeakerConfig Speaker { get; set; } = new SpeakerConfig();
     }
 
-    public class DatabaseConfig
+    public class SpeakerConfig
     {
-        public string ConnectionString { get; set; }
-        public int Timeout { get; set; }
+        public const string SpeechAPI = "SpeechAPI";
+        public const string VOICEVOX = "VOICEVOX";
+        public string synthesizerName { get; set; }
+        public string Name { get; set; }
+        public string UUID { get; set; }
+        public string ID { get; set; }
     }
-
-    public class UserConfig
+    public class MtgaConfig
     {
-        public string Username { get; set; }
-        public string Role { get; set; }
+        public string ProcessName { get; set; }
+        public string LogDirectoryPath { get; set; }
+        public string CardDatabaseDirectoryPath { get; set; }
     }
 }

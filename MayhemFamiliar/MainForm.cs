@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,39 +12,55 @@ namespace MayhemFamiliar
 {
     public partial class MainForm : Form
     {
+        private const string MtgaProcessName = "MTGA";
+        // LogWatcher用
+        private const string DetailedLogEnabled = "DETAILED LOGS: ENABLED";
+        private string _mtgaLogFilePath;
+        // JsonParser用
+        private const string CardDatabaseFileNamePattern = @"Raw_CardDatabase_.*\.mtga";
+        private string _cardDatabaseFilePath;
+
+        private Config _config;
         private LogWatcher _logWatcer;
         private JsonParser _jsonParser;
         private DialogueGenerator _dialogueGenerator;
         private Speaker _speaker;
         private CancellationTokenSource _ctsLogWatcher, _ctsJsonParser, _ctsDialogueGenerator, _ctsSpeaker;
 
-        private const string MtgaProcessName = "MTGA";
-
-        // LogWatcher用
-        private const string DetailedLogEnabled = "DETAILED LOGS: ENABLED";
-        private string _mtgaLogFilePath;
-
-        // JsonParser用
-        private const string CardDatabaseFileNamePattern = @"Raw_CardDatabase_.*\.mtga";
-        private string _cardDatabaseFilePath;
-
-
         public MainForm()
         {
             InitializeComponent();
             this.Shown += Form_Shown;
             this.FormClosing += Form_FormClosing;
+            listBoxVoices.SelectedIndexChanged += (s, e) =>
+            {
+                var selectedItem = listBoxVoices.SelectedItem as ListBoxItem;
+                if (selectedItem != null)
+                {
+                    _speaker?.SetVoice(selectedItem.Value.ToString());
+                }
+            };
+            buttonTestSpeech.Click += ButtonTestSpeech_Click;
+
+            // TODO: ラジオボタン周りのイベントハンドラを追加
         }
+
+        private void ButtonTestSpeech_Click(object sender, EventArgs e)
+        {
+            _speaker.Speech("テスト");
+        }
+
         private void Form_Shown(object sender, EventArgs e)
         {
             // Logger初期化
             Logger.Initialize(LogToTextBox);
 
             // TODO: コンフィグ読み込み
+            _config = Config.Load();
 
             // MTG Arena起動確認
             Logger.Instance.Log($"{this.GetType().Name}: MTG Arena起動確認");
-            while (!Util.IsProcessRunning(MtgaProcessName))
+            while (!Util.IsProcessRunning(_config.Mtga?.ProcessName ?? MtgaProcessName))
             {
                 Boolean ignore = false;
                 Logger.Instance.Log($"{this.GetType().Name}: MTG Arenaが起動していません。", LogLevel.Error);
@@ -69,9 +86,7 @@ namespace MayhemFamiliar
                 if (ignore) break;
             }
 
-
             // ログファイル存在確認
-            // TODO: 設定ファイルを参照する
             _mtgaLogFilePath = GetInitMtgaLogFilePath();
             while (!File.Exists(_mtgaLogFilePath))
             {
@@ -93,6 +108,7 @@ namespace MayhemFamiliar
                 }
             }
             Logger.Instance.Log($"{this.GetType().Name}: ログファイル: {_mtgaLogFilePath}");
+            _config.Mtga.LogDirectoryPath = Path.GetDirectoryName(_mtgaLogFilePath);
 
             // 詳細ログ有効確認
             if (CheckDetailedLog())
@@ -112,7 +128,6 @@ namespace MayhemFamiliar
             }
 
             // カードデータベースファイル存在確認
-            // TODO
             _cardDatabaseFilePath = GetInitCardDatabaseFilePath();
             while (!File.Exists(_cardDatabaseFilePath))
             {
@@ -134,27 +149,41 @@ namespace MayhemFamiliar
                 }
             }
             Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル: {_cardDatabaseFilePath}");
+            _config.Mtga.CardDatabaseDirectoryPath = Path.GetDirectoryName(_cardDatabaseFilePath);
 
-
+            // LogWacher起動
             _logWatcer = new LogWatcher(_mtgaLogFilePath);
             _ctsLogWatcher = new CancellationTokenSource();
             Task.Run(() => _logWatcer.Start(_ctsLogWatcher.Token));
 
+            // JsonParser起動
             _jsonParser = new JsonParser(_cardDatabaseFilePath);
             _ctsJsonParser = new CancellationTokenSource();
             Task.Run(() => _jsonParser.Start(_ctsJsonParser.Token));
 
+            // DialogGenerator起動
             _dialogueGenerator = new DialogueGenerator();
             _ctsDialogueGenerator = new CancellationTokenSource();
             Task.Run(() => _dialogueGenerator.Start(_ctsDialogueGenerator.Token));
 
-            _speaker = new Speaker();
+            // 初期Speaker決定
+            string synthesizerName = _config.Speaker?.synthesizerName ?? DefaultValue.synthesizerName;
+            switch (synthesizerName)
+            {
+                default:
+                    _speaker = new Speaker(new SpeechAPI());
+                    break;
+            }
             _ctsSpeaker = new CancellationTokenSource();
             Task.Run(() => _speaker.Start(_ctsSpeaker.Token));
+
+            // 話者タブの初期化
+            UpdateVoices();
         }
 
         private void Form_FormClosing(object sender, FormClosingEventArgs e)
         {
+            _config.Save();
             _ctsLogWatcher?.Cancel();
             _ctsLogWatcher?.Dispose();
         }
@@ -187,8 +216,7 @@ namespace MayhemFamiliar
 
         private string GetInitMtgaLogFilePath()
         {
-            // TODO : 設定ファイルを参照する
-            return Path.Combine(DefaultValue.MtgaLogDirectory, DefaultValue.MtgaLogFileName);
+            return Path.Combine(_config.Mtga?.LogDirectoryPath ?? DefaultValue.MtgaLogDirectory, DefaultValue.MtgaLogFileName);
         }
         private string GetMtgaLogFilePath()
         {
@@ -208,11 +236,6 @@ namespace MayhemFamiliar
             }
 
             return Path.Combine(logDirectory, DefaultValue.MtgaLogFileName);
-        }
-
-        private void MainForm_Load(object sender, EventArgs e)
-        {
-
         }
 
         private static string SelectDirectory()
@@ -265,7 +288,13 @@ namespace MayhemFamiliar
         }
 
         private string GetInitCardDatabaseFilePath()
-        {             // TODO : 設定ファイルを参照する
+        {
+            var cardDatabaseDirectoryPath = _config.Mtga?.CardDatabaseDirectoryPath;
+            var largestCardDatabaseFilePath = GetLargestCardDatabaseFilePath(cardDatabaseDirectoryPath);
+            if (!string.IsNullOrEmpty(largestCardDatabaseFilePath) && File.Exists(largestCardDatabaseFilePath))
+            {
+                return largestCardDatabaseFilePath;
+            }
             return Path.Combine(DefaultValue.CardDatabaseDirectory, GetLargestCardDatabaseFilePath(DefaultValue.CardDatabaseDirectory));
         }
         private string GetLargestCardDatabaseFilePath(string cardDatabaseDirectoryPath)
@@ -321,6 +350,22 @@ namespace MayhemFamiliar
             return Path.GetFullPath(cardDatabaseFile);
         }
 
+        private void UpdateVoices()
+        {
+            listBoxVoices.Items.Clear();
+            List<IVoice> voices = _speaker.GetVoices();
+            foreach (var voice in voices)
+            {
+                listBoxVoices.Items.Add(new ListBoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
+            }
+        }
 
+    }
+
+    public class ListBoxItem
+    {
+        public string Label { get; set; }
+        public object Value { get; set; }
+        public override string ToString() => Label; // ListBox表示用
     }
 }
