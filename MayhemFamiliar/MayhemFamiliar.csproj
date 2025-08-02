@@ -145,6 +145,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="MayhenFamilier_256.ico" />
+    <Content Include="README.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="THIRD-PARTY-NOTICES.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
