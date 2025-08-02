@@ -3,7 +3,7 @@ using System.Net;
 
 namespace MayhemFamiliar
 {
-    internal static class UpdateChecker
+    internal class UpdateChecker
     {
         private const string versionUrl = "https://raw.githubusercontent.com/poslogithub/MayhemFamiliar/refs/heads/main/version.txt";
         private const string downloadUrl = "https://github.com/poslogithub/MayhemFamiliar/releases/tag/";
@@ -17,16 +17,15 @@ namespace MayhemFamiliar
                     string currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
                     if (latestVersion != currentVersion)
                     {
-                        return versionUrl;
+                        return $"{downloadUrl}{latestVersion}";
                     }
-                    return $"{downloadUrl}{latestVersion}";
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error checking for update: {ex.Message}");
-                return "";
             }
+            return "";
         }
     }
 }
