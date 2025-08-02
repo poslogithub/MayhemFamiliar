@@ -46,23 +46,37 @@ namespace MayhemFamiliar
             // シンセサイザー変更
             radioButtonSAPI.CheckedChanged += (s, e) =>
             {
-                if (radioButtonSAPI.Checked)
+                if (radioButtonSAPI.Checked && _speaker != null)
                 {
-                    _speaker = new Speaker(new SpeechAPI());
-                    _config.Speaker.synthesizerName = SpeakerConfig.SpeechAPI;
-                    UpdateVoices();
-                    listBoxVoices.SelectedIndex = 0;
+                    try
+                    {
+                        _speaker.SetSynthesizer(new SpeechAPI());
+                        _config.Speaker.synthesizerName = SpeakerConfig.SpeechAPI;
+                        UpdateVoices();
+                        listBoxVoices.SelectedIndex = 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Instance.Log($"{this.GetType().Name}: {ex}");
+                    }
                 }
             };
             radioButtonVoicevox.CheckedChanged += (s, e) =>
             {
-                if (radioButtonVoicevox.Checked)
+                if (radioButtonVoicevox.Checked && _speaker != null)
                 {
-                    _speaker = new Speaker(new Voicevox());
-                    _config.Speaker.synthesizerName = SpeakerConfig.VOICEVOX;
-                    UpdateVoices();
-                    listBoxVoices.SelectedIndex = 0;
-                    _speaker.InitializeSpeaker();
+                    try
+                    {
+                        _speaker.SetSynthesizer(new Voicevox());
+                        _config.Speaker.synthesizerName = SpeakerConfig.VOICEVOX;
+                        UpdateVoices();
+                        listBoxVoices.SelectedIndex = 0;
+                        _speaker.InitializeSpeaker();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Instance.Log($"{this.GetType().Name}: {ex}");
+                    }
                 }
             };
         }
@@ -77,6 +91,19 @@ namespace MayhemFamiliar
             // Logger初期化
             Logger.Initialize(LogToTextBox);
 
+            var downloadUrl = UpdateChecker.CheckForUpdate();
+            if (!string.IsNullOrEmpty(downloadUrl))
+            {
+                DialogResult result = MessageBox.Show(
+                    $"新しいバージョンが利用可能です。{Environment.NewLine}ダウンロードページに移動しますか？",
+                    "アップデート確認",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+                if (result == DialogResult.Yes)
+                {
+                    System.Diagnostics.Process.Start(downloadUrl);
+                }
+            }
             // コンフィグ読み込み
             _config = Config.Load();
 

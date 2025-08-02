@@ -62,6 +62,11 @@ namespace MayhemFamiliar
         {
             _synthesizer.InitializeSpeaker();
         }
+        public void SetSynthesizer(ISynthesizer synthesizer)
+        {
+            _synthesizer = synthesizer;
+            Logger.Instance.Log($"{this.GetType().Name}: 音声合成器を設定: {synthesizer.GetType().Name}");
+        }
     }
 
     internal interface ISynthesizer

@@ -50,6 +50,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>MayhenFamilier_256.ico</ApplicationIcon>
@@ -90,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CardData.cs" />
+    <Compile Include="UpdateChecker.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="DefaultValue.cs" />
     <Compile Include="Util.cs" />
