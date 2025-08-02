@@ -38,16 +38,38 @@ namespace MayhemFamiliar
                 if (selectedItem != null)
                 {
                     _speaker?.SetVoice(selectedItem.Value.ToString());
+                    _config.Speaker.Key = selectedItem.Value.ToString();
                 }
             };
             buttonTestSpeech.Click += ButtonTestSpeech_Click;
 
-            // TODO: ラジオボタン周りのイベントハンドラを追加
+            // シンセサイザー変更
+            radioButtonSAPI.CheckedChanged += (s, e) =>
+            {
+                if (radioButtonSAPI.Checked)
+                {
+                    _speaker = new Speaker(new SpeechAPI());
+                    _config.Speaker.synthesizerName = SpeakerConfig.SpeechAPI;
+                    UpdateVoices();
+                    listBoxVoices.SelectedIndex = 0;
+                }
+            };
+            radioButtonVoicevox.CheckedChanged += (s, e) =>
+            {
+                if (radioButtonVoicevox.Checked)
+                {
+                    _speaker = new Speaker(new Voicevox());
+                    _config.Speaker.synthesizerName = SpeakerConfig.VOICEVOX;
+                    UpdateVoices();
+                    listBoxVoices.SelectedIndex = 0;
+                    _speaker.InitializeSpeaker();
+                }
+            };
         }
 
         private void ButtonTestSpeech_Click(object sender, EventArgs e)
         {
-            _speaker.Speech("テスト");
+            _speaker.Speech("対戦よろしくお願いします。");
         }
 
         private void Form_Shown(object sender, EventArgs e)
@@ -55,7 +77,7 @@ namespace MayhemFamiliar
             // Logger初期化
             Logger.Initialize(LogToTextBox);
 
-            // TODO: コンフィグ読み込み
+            // コンフィグ読み込み
             _config = Config.Load();
 
             // MTG Arena起動確認
@@ -168,17 +190,39 @@ namespace MayhemFamiliar
 
             // 初期Speaker決定
             string synthesizerName = _config.Speaker?.synthesizerName ?? DefaultValue.synthesizerName;
+            string key = _config.Speaker?.Key ?? "";
             switch (synthesizerName)
             {
+                case SpeakerConfig.VOICEVOX:
+                    radioButtonVoicevox.Checked = true;
+                    _speaker = new Speaker(new Voicevox());
+                    break;
                 default:
+                    radioButtonSAPI.Checked = true;
                     _speaker = new Speaker(new SpeechAPI());
                     break;
             }
+            UpdateVoices();
+            if (!string.IsNullOrEmpty(key))
+            {
+                listBoxVoices.SelectedItem = listBoxVoices.Items.Cast<ListBoxItem>().FirstOrDefault(item => item.Value.ToString() == key);
+            }
+            else
+            {
+                // デフォルトの音声を選択
+                listBoxVoices.SelectedIndex = 0;
+            }
             _ctsSpeaker = new CancellationTokenSource();
             Task.Run(() => _speaker.Start(_ctsSpeaker.Token));
+            _config.Speaker.synthesizerName = synthesizerName;
+            var selectedItem = listBoxVoices.SelectedItem as ListBoxItem;
+            if (selectedItem != null)
+            {
+                _speaker?.SetVoice(selectedItem.Value.ToString());
+                _config.Speaker.Key = selectedItem.Value.ToString();
+            }
 
             // 話者タブの初期化
-            UpdateVoices();
         }
 
         private void Form_FormClosing(object sender, FormClosingEventArgs e)

@@ -13,10 +13,10 @@ namespace MayhemFamiliar
 {
     internal class Speaker
     {
-        private SpeechAPI _api;
-        public Speaker(SpeechAPI api)
+        private ISynthesizer _synthesizer;
+        public Speaker(ISynthesizer synthesizer)
         {
-            _api = api;
+            _synthesizer = synthesizer;
         }
         public async Task Start(CancellationToken cancellationToken)
         {
@@ -27,7 +27,7 @@ namespace MayhemFamiliar
                 {
                     if (DialogueQueue.Queue.TryDequeue(out string dialogue))
                     {
-                        _api.ProcessDialogue(dialogue);
+                        _synthesizer.ProcessDialogue(dialogue);
                     }
                     else
                     {
@@ -48,15 +48,19 @@ namespace MayhemFamiliar
         }
         public List<IVoice> GetVoices()
         {
-            return _api.GetVoices();
+            return _synthesizer.GetVoices();
         }
         public void SetVoice(string voiceName)
         {
-            _api.SetVoice(voiceName);
+            _synthesizer.SetVoice(voiceName);
         }
         public void Speech(string dialogue)
         {
-            _api.ProcessDialogue(dialogue);
+            _synthesizer.ProcessDialogue(dialogue);
+        }
+        public void InitializeSpeaker()
+        {
+            _synthesizer.InitializeSpeaker();
         }
     }
 
@@ -64,11 +68,11 @@ namespace MayhemFamiliar
     {
         void ProcessDialogue(string dialogue);
         List<IVoice> GetVoices();
-        void SetVoice(string voiceName);
-        void SetVoice(int styleId);
+        void SetVoice(string key);
+        void InitializeSpeaker();
     }
 
-    internal class VoicevoxAPI : ISynthesizer
+    internal class Voicevox : ISynthesizer
     {
         private const string BaseUrl = "http://127.0.0.1:50021/";
         private int _styleId = -1;
@@ -87,6 +91,7 @@ namespace MayhemFamiliar
                 var queryUrl = $"{BaseUrl}audio_query?text={Uri.EscapeDataString(dialogue)}&speaker={_styleId}";
                 var queryRequest = (HttpWebRequest)WebRequest.Create(queryUrl);
                 queryRequest.Method = "POST";
+                queryRequest.Accept = "application/json";
                 queryRequest.ContentLength = 0; // POSTだがbodyなし
 
                 string queryJson;
@@ -101,6 +106,7 @@ namespace MayhemFamiliar
                 var synthUrl = $"{BaseUrl}synthesis?speaker={_styleId}";
                 var synthRequest = (HttpWebRequest)WebRequest.Create(synthUrl);
                 synthRequest.Method = "POST";
+                synthRequest.Accept = "audio/wav";
                 synthRequest.ContentType = "application/json";
 
                 using (var synthStream = synthRequest.GetRequestStream())
@@ -140,9 +146,11 @@ namespace MayhemFamiliar
             var voices = new List<IVoice>();
             try
             {
-                var url = $"{BaseUrl}/speakers";
+                var url = $"{BaseUrl}speakers";
                 var request = (HttpWebRequest)WebRequest.Create(url);
                 request.Method = "GET";
+                request.Accept = "application/json";
+
                 using (var response = (HttpWebResponse)request.GetResponse())
                 using (var stream = response.GetResponseStream())
                 using (var reader = new StreamReader(stream))
@@ -169,16 +177,35 @@ namespace MayhemFamiliar
             return voices;
         }
 
-        public void SetVoice(string voiceName)
+        public void InitializeSpeaker()
         {
-            // 実装は省略
-            throw new NotImplementedException();
+            var voices = new List<IVoice>();
+            try
+            {
+                var url = $"{BaseUrl}initialize_speaker?speaker={_styleId}&skip_reinit=true";
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "POST";
+                request.Accept = "*/*";
+                request.ContentLength = 0; // POSTだがbodyなし
+
+                string queryJson;
+                using (var queryResponse = (HttpWebResponse)request.GetResponse())
+                using (var queryStream = queryResponse.GetResponseStream())
+                using (var queryReader = new StreamReader(queryStream))
+                {
+                    queryJson = queryReader.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"VoicevoxAPI: VOICEVOX話者一覧取得失敗: {ex.Message}", LogLevel.Error);
+            }
+        }
+        public void SetVoice(string key)
+        {
+            _styleId = int.Parse(key);
         }
 
-        public void SetVoice(int styleId)
-        {
-            _styleId = styleId;
-        }
     }
     internal class SpeechAPI : ISynthesizer
     {
@@ -202,23 +229,18 @@ namespace MayhemFamiliar
             }
             return voices;
         }
-        public void SetVoice(string voiceName)
+        public void SetVoice(string key)
         {
-            Logger.Instance.Log($"{this.GetType().Name}: 音声を設定: {voiceName}");
-            _synthesizer.SelectVoice(voiceName);
+            Logger.Instance.Log($"{this.GetType().Name}: 音声を設定: {key}");
+            _synthesizer.SelectVoice(key);
         }
-
-        public void SetVoice(int styleId)
-        {
-            throw new NotImplementedException();
-        }
+        public void InitializeSpeaker() { }
     }
 
     internal interface IVoice
     {
         string Name { get; set; }
         string Description { get; set; }
-        string ID { get; set; }
         string StyleName { get; set; }
         int StyleID { get; set; }
         string GetKey();
@@ -230,18 +252,17 @@ namespace MayhemFamiliar
     {
         public string Name { get; set; }
         public string Description { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public string ID { get; set; }
         public string StyleName { get; set; }
         public int StyleID { get; set; }
         public VoicevoxVoice(string name, string styleName, int styleId)
         {
             Name = name;
-            StyleName = name;
+            StyleName = styleName;
             StyleID = styleId;
         }
         public string GetKey()
         {
-            return $"{StyleID}";
+            return StyleID.ToString();
         }
         public string GetLabel()
         {
@@ -257,7 +278,6 @@ namespace MayhemFamiliar
     {
         public string Name { get; set; }
         public string Description { get; set; }
-        public string ID { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string StyleName { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public int StyleID { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 

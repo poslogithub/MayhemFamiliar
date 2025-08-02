@@ -49,9 +49,7 @@ namespace MayhemFamiliar
         public const string SpeechAPI = "SpeechAPI";
         public const string VOICEVOX = "VOICEVOX";
         public string synthesizerName { get; set; }
-        public string Name { get; set; }
-        public string UUID { get; set; }
-        public string ID { get; set; }
+        public string Key { get; set; }
     }
     public class MtgaConfig
     {
