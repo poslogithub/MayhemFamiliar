@@ -14,7 +14,7 @@ namespace MayhemFamiliar
                 using (var client = new WebClient())
                 {
                     string latestVersion = client.DownloadString(versionUrl).Trim();
-                    string currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                    string currentVersion = $"v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()}";
                     if (latestVersion != currentVersion)
                     {
                         return $"{downloadUrl}{latestVersion}";
