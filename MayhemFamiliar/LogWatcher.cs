@@ -26,11 +26,6 @@ namespace MayhemFamiliar
         public async void Start(CancellationToken _ctsLogWatcher, Boolean readFullLog = false)
         {
             Logger.Instance.Log($"{this.GetType().Name}: 開始");
-            // _lastFileSize = new FileInfo(filePath).Length;   最初から読み込む。
-
-            // 初期読み込み
-            // var args = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(filePath), Path.GetFileName(filePath));
-            // OnChanged(_watcher, args);
 
             _powershell.StartInfo.FileName = PowerShellExecutable;
             _powershell.StartInfo.Arguments = $"-NoProfile -Command \"Get-Content -Path '{_logFilePath}' -Tail 1 -Wait\"";

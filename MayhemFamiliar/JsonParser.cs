@@ -34,8 +34,11 @@ namespace MayhemFamiliar
     }
     static class ZoneId
     {
-        public const int YourRevealed = 18;
-        public const int OpponentsRevealed = 19;
+        public static Dictionary<int, int> Revealed = new Dictionary<int, int>()
+        {
+            { 1, 18 },
+            { 2, 19 }
+        };
         public const int Suppressed = 24;
         public const int Pending = 25;
         public const int Command = 26;
@@ -43,19 +46,32 @@ namespace MayhemFamiliar
         public const int Battlefield = 28;
         public const int Exile = 29;
         public const int Limbo = 30;
-        public const int YourHand = 31;
-        public const int YourLibrary = 32;
-        public const int YourGraveyard = 33;
-        public const int YourSideboard = 34;
-        public const int OpponentsHand = 35;
-        public const int OpponentsLibrary = 36;
-        public const int OpponentsGraveyard = 37;
-        public const int OpponentsSideboard = 38;
-        public static List<int> YourZones = new List<int>() {
-            YourRevealed, YourHand, YourLibrary, YourGraveyard, YourSideboard
+        public static Dictionary<int, int> Hand = new Dictionary<int, int>()
+        {
+            { 1, 31 },
+            { 2, 35 }
         };
-        public static List<int> OpponentsZones = new List<int>() {
-            OpponentsRevealed, OpponentsHand, OpponentsLibrary, OpponentsGraveyard, OpponentsSideboard
+        public static Dictionary<int, int> Library = new Dictionary<int, int>()
+        {
+            { 1, 32 },
+            { 2, 36 }
+        };
+        public static Dictionary<int, int> Graveyard = new Dictionary<int, int>()
+        {
+            { 1, 33 },
+            { 2, 37 }
+        };
+        public static Dictionary<int, int> Sideboard = new Dictionary<int, int>()
+        {
+            { 1, 34 },
+            { 2, 38 }
+        };
+        public const int YourSideboard = 34;
+        public const int OpponentsSideboard = 38;
+        public static Dictionary<int, List<int>> PlayerZones = new Dictionary<int, List<int>>()
+        {
+            { 1, new List<int>() { Revealed[1], Hand[1], Library[1], Graveyard[1], Sideboard[1] } }, // あなた
+            { 2, new List<int>() { Revealed[2], Hand[2], Library[2], Graveyard[2], Sideboard[2] } } // 対戦相手
         };
     }
     static class GreMessageType
@@ -108,7 +124,7 @@ namespace MayhemFamiliar
         public const string Annotations = "annotations";
         public const string AuthenticateResponse = "authenticateResponse";
         public const string Category = "category";
-        public const string ClientID = "clientId";
+        public const string ClientId = "clientId";
         public const string ControllerSeatId = "controllerSeatId";
         public const string Details = "details";
         public const string DiffDeletedInstanceIds = "diffDeletedInstanceIds";
@@ -315,7 +331,7 @@ namespace MayhemFamiliar
             if (json[Key.AuthenticateResponse] != null)
             {
                 // 自分のsystemSeatIdを取得するためにClientIdを取得
-                _clientId = json[Key.AuthenticateResponse]?[Key.ClientID]?.ToString();
+                _clientId = json[Key.AuthenticateResponse]?[Key.ClientId]?.ToString();
                 Logger.Instance.Log($"{this.GetType().Name}: ClientID: \"{_clientId}\"");
             }
             if (json[Key.MatchGameRoomStateChangedEvent] != null)
@@ -352,8 +368,7 @@ namespace MayhemFamiliar
             switch (message[Key.Type]?.ToString())
             {
                 case GreMessageType.ConnectResp:
-                    Logger.Instance.Log($"{this.GetType().Name}: GREMessageType_ConnectResp");
-                    EventQueue.Queue.Enqueue($"{GetPlayer(0)} {Verb.GameStart}");
+                    // ゲーム開始連絡はprocessGameInfo()でやるからここでは何もしない
                     break;
                 case GreMessageType.MulliganReq:
                     Logger.Instance.Log($"{this.GetType().Name}: GREMessageType_MulliganReq");
@@ -465,17 +480,12 @@ namespace MayhemFamiliar
                             string zoneTransferCategory = annotation[Key.Details]?[2]?[Key.ValueString]?[0].ToString();
                             if (affectorId == Unknown.Id)
                             {
-                                if (ZoneId.YourZones.Contains(zoneSrcId) || ZoneId.YourZones.Contains(zoneDestId))
-                                {
-                                    affectorId = _yourSeatId; // あなた
-                                }
-                                else if (ZoneId.OpponentsZones.Contains(zoneSrcId) || ZoneId.OpponentsZones.Contains(zoneDestId))
-                                {
-                                    affectorId = _opponentSeatId; // 対戦相手
-                                }
-                                else
-                                {
-                                    affectorId = Unknown.PlayerId; // 不明
+                                foreach (int seadId in new List<int> { 1, 2 })
+                                { 
+                                    if (ZoneId.PlayerZones[seadId].Contains(zoneSrcId) || ZoneId.PlayerZones[seadId].Contains(zoneDestId))
+                                    {
+                                        affectorId = seadId;
+                                    }
                                 }
                             }
                             // 【改善可能】affectorIdが10未満ならプレイヤー、そうでないならGameObjectのcontrollerかownerとする。
