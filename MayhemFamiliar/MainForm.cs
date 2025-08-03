@@ -26,16 +26,17 @@ namespace MayhemFamiliar
         private DialogueGenerator _dialogueGenerator;
         private Speaker _speaker;
         private CancellationTokenSource _ctsLogWatcher, _ctsJsonParser, _ctsDialogueGenerator, _ctsSpeaker;
+        private Boolean _readFullLog = false;
 
-        public MainForm()
+        public MainForm(string[] args)
         {
+            _readFullLog = args.Any(arg => arg == "-f");
             InitializeComponent();
             this.Shown += Form_Shown;
             this.FormClosing += Form_FormClosing;
             listBoxVoices.SelectedIndexChanged += (s, e) =>
             {
-                var selectedItem = listBoxVoices.SelectedItem as ListBoxItem;
-                if (selectedItem != null)
+                if (listBoxVoices.SelectedItem is ListBoxItem selectedItem)
                 {
                     _speaker?.SetVoice(selectedItem.Value.ToString());
                     _config.Speaker.Key = selectedItem.Value.ToString();
@@ -104,6 +105,7 @@ namespace MayhemFamiliar
                     System.Diagnostics.Process.Start(downloadUrl);
                 }
             }
+            
             // コンフィグ読み込み
             _config = Config.Load();
 
@@ -180,9 +182,9 @@ namespace MayhemFamiliar
             _cardDatabaseFilePath = GetInitCardDatabaseFilePath();
             while (!File.Exists(_cardDatabaseFilePath))
             {
-                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル {CardDatabaseFileNamePattern} が見つかりません。", LogLevel.Error);
+                Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル {CardDatabaseFileNamePattern} が {_cardDatabaseFilePath} に見つかりません。", LogLevel.Error);
                 DialogResult result = MessageBox.Show(
-                    $"カードデータベースファイル {CardDatabaseFileNamePattern} が見つかりませんでした。{Environment.NewLine}次に表示されるダイアログで {CardDatabaseFileNamePattern} が存在するフォルダを選択してください。",
+                    $"カードデータベースファイル {CardDatabaseFileNamePattern} が {_cardDatabaseFilePath} に見つかりませんでした。{Environment.NewLine}次に表示されるダイアログで {CardDatabaseFileNamePattern} が存在するフォルダを選択してください。",
                     "カードデータベースファイル存在確認",
                     MessageBoxButtons.OKCancel,
                     MessageBoxIcon.Warning);
@@ -203,7 +205,7 @@ namespace MayhemFamiliar
             // LogWacher起動
             _logWatcer = new LogWatcher(_mtgaLogFilePath);
             _ctsLogWatcher = new CancellationTokenSource();
-            Task.Run(() => _logWatcer.Start(_ctsLogWatcher.Token));
+            Task.Run(() => _logWatcer.Start(_ctsLogWatcher.Token, _readFullLog));
 
             // JsonParser起動
             _jsonParser = new JsonParser(_cardDatabaseFilePath);

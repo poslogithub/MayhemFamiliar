@@ -106,12 +106,16 @@ namespace MayhemFamiliar
         public const string AffectedIds = "affectedIds";
         public const string AffectorId = "affectorId";
         public const string Annotations = "annotations";
+        public const string AuthenticateResponse = "authenticateResponse";
         public const string Category = "category";
+        public const string ClientID = "clientId";
         public const string ControllerSeatId = "controllerSeatId";
         public const string Details = "details";
         public const string DiffDeletedInstanceIds = "diffDeletedInstanceIds";
         public const string GameInfo = "gameInfo";
         public const string GameObjects = "gameObjects";
+        public const string GameRoomConfig = "gameRoomConfig";
+        public const string GameRoomInfo = "gameRoomInfo";
         public const string GameStateId = "gameStateId";
         public const string GameStateMessage = "gameStateMessage";
         public const string GreToClientEvent = "greToClientEvent";
@@ -119,14 +123,18 @@ namespace MayhemFamiliar
         public const string GrpId = "grpId";
         public const string Id = "id";
         public const string InstanceId = "instanceId";
+        public const string MatchGameRoomStateChangedEvent = "matchGameRoomStateChangedEvent";
         public const string Name = "name";
         public const string NewId = "new_id";
         public const string ObjectInstanceIds = "objectInstanceIds";
         public const string OrigId = "orig_id";
         public const string OwnerSeatId = "ownerSeatId";
+        public const string ReservedPlayers = "reservedPlayers";
         public const string Stage = "stage";
+        public const string SystemSeatId = "systemSeatId";
         public const string TransactionId = "transactionId";
         public const string Type = "type";
+        public const string UserId = "userId";
         public const string ValueInt32 = "valueInt32";
         public const string ValueString = "valueString";
         public const string ZoneId = "zoneId";
@@ -161,22 +169,10 @@ namespace MayhemFamiliar
         public const int GrpId = 0;
         public const int ZoneId = 0;
         public const string Player = "Unknown_Player";
+        public const int PlayerId = 0;
         public const int OwnerSeatId = 0;
         public const int ControllerSeatId = 0;
         public const int Id = 0;
-    }
-    static class PlayerId
-    {
-        public const int Unknown = 0; // ゲーム開始前や不明なプレイヤー
-        public const int You = 1;
-        public const int Opponent = 2;
-    }
-    public static class Player
-    {
-        public const string Unknown = "Unknown_Player"; // ゲーム開始前や不明なプレイヤー
-        public const string You = "You";
-        public const string Opponent = "Opponent";
-        public static readonly string[] ById = new[] { Unknown, You, Opponent };
     }
     public static class ZoneTransferCategory
     {
@@ -191,6 +187,12 @@ namespace MayhemFamiliar
         public const string Sacrifice = "Sacrifice";
         public const string Resolve = "Resolve";
         public const string Return = "Return";
+    }
+    public static class Player
+    {
+        public const string You = "You";
+        public const string Opponent = "Opponent";
+        public const string Unknown = "Unknown_Player";
     }
     class GameObject
     {
@@ -228,9 +230,9 @@ namespace MayhemFamiliar
         public string Phase { get; set; } = "";
         public string Step { get; set; } = "";
         public int TurnNumber { get; set; } = 0;
-        public int ActivePlayer { get; set; } = PlayerId.Unknown;
-        public int PriorityPlayer { get; set; } = PlayerId.Unknown;
-        public int DecisionPlayer { get; set; } = PlayerId.Unknown;
+        public int ActivePlayer { get; set; } = 0;
+        public int PriorityPlayer { get; set; } = 0;
+        public int DecisionPlayer { get; set; } = 0;
         public string NextPhase { get; set; } = "";
         public static string Key = "TurnInfo";
         public static string PhaseKey = "phase";
@@ -248,6 +250,9 @@ namespace MayhemFamiliar
         private CardData _cardData;
         private TurnInfo _turnInfo = new TurnInfo();
         private int _gameStateId = 0;
+        private string _clientId = "";
+        private int _yourSeatId = 0;
+        private int _opponentSeatId = 0;
 
         public JsonParser(string cardDatabaseFile)
         {
@@ -307,7 +312,32 @@ namespace MayhemFamiliar
                 return;
             }
 
-            // GreToClientMessages
+            if (json[Key.AuthenticateResponse] != null)
+            {
+                // 自分のsystemSeatIdを取得するためにClientIdを取得
+                _clientId = json[Key.AuthenticateResponse]?[Key.ClientID]?.ToString();
+                Logger.Instance.Log($"{this.GetType().Name}: ClientID: \"{_clientId}\"");
+            }
+            if (json[Key.MatchGameRoomStateChangedEvent] != null)
+            {
+                // ClientIdを元に自分と対戦相手のsystemSeatIdを取得
+                if (json[Key.MatchGameRoomStateChangedEvent][Key.GameRoomInfo]?[Key.GameRoomConfig]?[Key.ReservedPlayers] != null)
+                {
+                    foreach (var player in json[Key.MatchGameRoomStateChangedEvent][Key.GameRoomInfo][Key.GameRoomConfig][Key.ReservedPlayers])
+                    {
+                        if (player[Key.UserId].ToString() == _clientId)
+                        {
+                            _yourSeatId = (int)player[Key.SystemSeatId];
+                            Logger.Instance.Log($"{this.GetType().Name}: YourSeadId: {_yourSeatId}");
+                        }
+                        else
+                        {
+                            _opponentSeatId = (int)player[Key.SystemSeatId];
+                            Logger.Instance.Log($"{this.GetType().Name}: OpponentSeadId: {_opponentSeatId}");
+                        }
+                    }
+                }
+            }
             if (json[Key.GreToClientEvent]?[Key.GreToClientMessages] != null)
             {
                 foreach (var message in json[Key.GreToClientEvent][Key.GreToClientMessages])
@@ -321,8 +351,11 @@ namespace MayhemFamiliar
         {
             switch (message[Key.Type]?.ToString())
             {
+                case GreMessageType.ConnectResp:
+                    Logger.Instance.Log($"{this.GetType().Name}: GREMessageType_ConnectResp");
+                    EventQueue.Queue.Enqueue($"{GetPlayer(0)} {Verb.GameStart}");
+                    break;
                 case GreMessageType.MulliganReq:
-                    // GREMessageType_MulliganReq
                     Logger.Instance.Log($"{this.GetType().Name}: GREMessageType_MulliganReq");
                     EventQueue.Queue.Enqueue($"{Player.You} {Verb.Mulligan}");
                     break;
@@ -434,22 +467,22 @@ namespace MayhemFamiliar
                             {
                                 if (ZoneId.YourZones.Contains(zoneSrcId) || ZoneId.YourZones.Contains(zoneDestId))
                                 {
-                                    affectorId = PlayerId.You; // あなた
+                                    affectorId = _yourSeatId; // あなた
                                 }
                                 else if (ZoneId.OpponentsZones.Contains(zoneSrcId) || ZoneId.OpponentsZones.Contains(zoneDestId))
                                 {
-                                    affectorId = PlayerId.Opponent; // 対戦相手
+                                    affectorId = _opponentSeatId; // 対戦相手
                                 }
                                 else
                                 {
-                                    affectorId = PlayerId.Unknown; // 不明
+                                    affectorId = Unknown.PlayerId; // 不明
                                 }
                             }
                             // 【改善可能】affectorIdが10未満ならプレイヤー、そうでないならGameObjectのcontrollerかownerとする。
                             // 10は仮。いずれプレイヤー数が増える可能性があるので。
-                            string player = affectorId < 10 ? Player.ById[affectorId] : 
-                                (_gameObjects[affectorId].ControllerSeatId != Unknown.ControllerSeatId ? Player.ById[_gameObjects[affectorId].ControllerSeatId] :
-                                    (_gameObjects[affectorId].OwnerSeatId != Unknown.OwnerSeatId ? Player.ById[_gameObjects[affectorId].OwnerSeatId] : Unknown.Player)
+                            string player = affectorId < 10 ? GetPlayer(affectorId) : 
+                                (_gameObjects[affectorId].ControllerSeatId != Unknown.ControllerSeatId ? GetPlayer(_gameObjects[affectorId].ControllerSeatId) :
+                                    (_gameObjects[affectorId].OwnerSeatId != Unknown.OwnerSeatId ? GetPlayer(_gameObjects[affectorId].OwnerSeatId) : Unknown.Player)
                                 );
                             foreach (int affectedId in affectedIds)
                             {
@@ -562,6 +595,20 @@ namespace MayhemFamiliar
             }
         }
 
-
+        public string GetPlayer(int seatId)
+        {
+            if (seatId == _yourSeatId)
+            {
+                return Player.You;
+            }
+            else if (seatId == _opponentSeatId)
+            {
+                return Player.Opponent;
+            }
+            else
+            {
+                return Player.Unknown;
+            }
+        }
     }
 }
