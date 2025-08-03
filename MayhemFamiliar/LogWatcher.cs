@@ -2,11 +2,12 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace MayhemFamiliar
 {
-    internal class LogWatcher
+    internal class LogWatcher : IDisposable
     {
         private const string PowerShellExecutable = "powershell.exe";
         private readonly Process _powershell = new Process();
@@ -17,17 +18,21 @@ namespace MayhemFamiliar
             _logFilePath = logFilePath;
         }
 
-        public async void Start(CancellationToken _ctsLogWatcher)
+        public void Dispose()
+        {
+            ConsoleHelper.SendCtrlC(_powershell);
+        }
+
+        public async void Start(CancellationToken _ctsLogWatcher, Boolean readFullLog = false)
         {
             Logger.Instance.Log($"{this.GetType().Name}: 開始");
-            // _lastFileSize = new FileInfo(filePath).Length;   最初から読み込む。
-
-            // 初期読み込み
-            // var args = new FileSystemEventArgs(WatcherChangeTypes.Changed, Path.GetDirectoryName(filePath), Path.GetFileName(filePath));
-            // OnChanged(_watcher, args);
 
             _powershell.StartInfo.FileName = PowerShellExecutable;
             _powershell.StartInfo.Arguments = $"-NoProfile -Command \"Get-Content -Path '{_logFilePath}' -Tail 1 -Wait\"";
+            if (readFullLog)
+            {
+                _powershell.StartInfo.Arguments = $"-NoProfile -Command \"Get-Content -Path '{_logFilePath}'\"";
+            }
             _powershell.StartInfo.UseShellExecute = false; // シェルを介さず直接実行
             _powershell.StartInfo.RedirectStandardOutput = true; // 標準出力をリダイレクト
             _powershell.StartInfo.RedirectStandardError = true; // エラー出力もリダイレクト（必要に応じて）
@@ -81,6 +86,36 @@ namespace MayhemFamiliar
             {
                 Logger.Instance.Log($"{this.GetType().Name}: ログ読み込みで例外が発生");
                 Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    public static class ConsoleHelper
+    {
+        [DllImport("kernel32.dll")]
+        private static extern bool GenerateConsoleCtrlEvent(uint dwCtrlEvent, uint dwProcessGroupId);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool AttachConsole(uint dwProcessId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool FreeConsole();
+
+        private const uint CTRL_C_EVENT = 0;
+
+        public static void SendCtrlC(Process process)
+        {
+            // 既存のコンソールを切り離し
+            FreeConsole();
+            // 対象プロセスのコンソールにアタッチ
+            if (AttachConsole((uint)process.Id))
+            {
+                // プロセスグループID=0で全体に送信
+                GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
+                // 必要なら少し待つ
+                System.Threading.Thread.Sleep(100);
+                // 切り離し
+                FreeConsole();
             }
         }
     }

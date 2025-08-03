@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("poslog")]
 [assembly: AssemblyProduct("MayhemFamiliar")]
-[assembly: AssemblyCopyright("Copyright ©  2025")]
+[assembly: AssemblyCopyright("Copyright © 2025 poslog")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

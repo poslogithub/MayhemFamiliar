@@ -177,6 +177,7 @@ namespace MayhemFamiliar
         {
             if (CultureInfo.CurrentUICulture.Name == "ja-JP")
             {
+                /*
                 // 目的語のデリミタを置換
                 int first = objective.IndexOf('"');
                 if (first == -1) return objective;
@@ -187,6 +188,8 @@ namespace MayhemFamiliar
                 chars[first] = '《';
                 chars[second] = '》';
                 return new string(chars);
+                */
+                objective = objective.Replace("\"", "");
             }
             return objective;
         }
