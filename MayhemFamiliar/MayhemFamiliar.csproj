@@ -176,6 +176,7 @@
   <Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
   <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.targets')" />
   <PropertyGroup>
-    <PostBuildEvent>powershell -Command "$version = (Get-Content '$(ProjectDir)Properties\AssemblyInfo.cs' | Select-String 'AssemblyVersion' | ForEach-Object { $_ -replace '.*AssemblyVersion\(\"(.*?)\"\).*', '$1' }); [System.IO.File]::WriteAllText('$(SolutionDir)version.txt', 'v' + $version, [System.Text.UTF8Encoding]::new($false))"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>

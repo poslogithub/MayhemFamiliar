@@ -87,17 +87,17 @@ namespace MayhemFamiliar
             _speaker.Speech("対戦よろしくお願いします。");
         }
 
-        private void Form_Shown(object sender, EventArgs e)
+        private async void Form_Shown(object sender, EventArgs e)
         {
             // Logger初期化
             Logger.Initialize(LogToTextBox);
 
-            var downloadUrl = UpdateChecker.CheckForUpdate();
+            var downloadUrl = await UpdateChecker.CheckForUpdate();
             if (!string.IsNullOrEmpty(downloadUrl))
             {
                 DialogResult result = MessageBox.Show(
-                    $"新しいバージョンが利用可能です。{Environment.NewLine}ダウンロードページに移動しますか？",
-                    "アップデート確認",
+                    $"新しいバージョンが利用可能です。{Environment.NewLine}ダウンロードページ {downloadUrl} に移動しますか？",
+                    $"{Application.ProductName} アップデート確認",
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Information);
                 if (result == DialogResult.Yes)
