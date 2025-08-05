@@ -79,9 +79,10 @@ namespace MayhemFamiliar
         public const string ConnectResp = "GREMessageType_ConnectResp";
         public const string DieRollResultsResp = "GREMessageType_DieRollResultsResp";
         public const string GameStateMessage = "GREMessageType_GameStateMessage";
-        public const string SetSettingsResp = "GREMessageType_SetSettingsResp";
-        public const string PromptReq = "GREMessageType_PromptReq";
         public const string MulliganReq = "GREMessageType_MulliganReq";
+        public const string PromptReq = "GREMessageType_PromptReq";
+        public const string QueuedGameStateMessage = "GREMessageType_QueuedGameStateMessage";
+        public const string SetSettingsResp = "GREMessageType_SetSettingsResp";
     }
     static class GameStateType
     {
@@ -140,6 +141,7 @@ namespace MayhemFamiliar
         public const string Id = "id";
         public const string InstanceId = "instanceId";
         public const string MatchGameRoomStateChangedEvent = "matchGameRoomStateChangedEvent";
+        public const string MsgId = "msgId";
         public const string Name = "name";
         public const string NewId = "new_id";
         public const string ObjectInstanceIds = "objectInstanceIds";
@@ -265,6 +267,7 @@ namespace MayhemFamiliar
         private Dictionary<int, GameObject> _gameObjects;
         private CardData _cardData;
         private TurnInfo _turnInfo = new TurnInfo();
+        private int _msgId = 0;
         private int _gameStateId = 0;
         private string _clientId = "";
         private int _yourSeatId = 0;
@@ -365,6 +368,8 @@ namespace MayhemFamiliar
 
         private void ProcesseGreToClientMessage(JToken message)
         {
+            _msgId = (int)(message[Key.MsgId] ?? 0);
+            _gameStateId = (int)(message[Key.GameStateId] ?? 0);
             switch (message[Key.Type]?.ToString())
             {
                 case GreMessageType.ConnectResp:
@@ -375,15 +380,20 @@ namespace MayhemFamiliar
                     EventQueue.Queue.Enqueue($"{Player.You} {Verb.Mulligan}");
                     break;
                 case GreMessageType.GameStateMessage:
+                case GreMessageType.QueuedGameStateMessage:
                     _gameStateId = (int)message[Key.GameStateId];
-                    switch (message[Key.GameStateMessage]?[Key.Type]?.ToString())
+                    var gameStateMessage = message[Key.GameStateMessage];
+                    if (gameStateMessage != null)
                     {
-                        case GameStateType.Full:
-                            ProcesseGameStateTypeFullMessage(message[Key.GameStateMessage]);
-                            break;
-                        case GameStateType.Diff:
-                            ProcesseGameStateTypeDiffMessage(message[Key.GameStateMessage]);
-                            break;
+                        switch (gameStateMessage[Key.Type]?.ToString())
+                        {
+                            case GameStateType.Full:
+                                ProcesseGameStateTypeFullMessage(gameStateMessage);
+                                break;
+                            case GameStateType.Diff:
+                                ProcesseGameStateTypeDiffMessage(gameStateMessage);
+                                break;
+                        }
                     }
                     break;
             }
@@ -496,7 +506,7 @@ namespace MayhemFamiliar
                                 );
                             foreach (int affectedId in affectedIds)
                             {
-                                if (!_gameObjects.ContainsKey(affectedId))
+                                if (_gameObjects.ContainsKey(affectedId))
                                 {
                                     _gameObjects[affectedId].ZoneId = zoneDestId;
                                 }
