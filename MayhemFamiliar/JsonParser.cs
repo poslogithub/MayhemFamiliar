@@ -417,6 +417,7 @@ namespace MayhemFamiliar
             _msgId = (int)(message[Key.MsgId] ?? 0);
             _gameStateId = (int)(message[Key.GameStateId] ?? 0);
             string greMessagetype = message[Key.Type]?.ToString() ?? "";
+            Logger.Instance.Log($"{this.GetType().Name}: GREメッセージタイプ: {greMessagetype}, MsgId: {_msgId}, GameStateId: {_gameStateId}", LogLevel.Debug);
             if (string.IsNullOrEmpty(greMessagetype) || !GreMessageType.IsKnown(greMessagetype))
             {
                 Logger.Instance.Log($"{this.GetType().Name}: 未知のGREメッセージタイプ: {greMessagetype}", LogLevel.Debug);
@@ -594,6 +595,13 @@ namespace MayhemFamiliar
         {
             if (turnInfo != null)
             {
+                // 先手第１ターンだけここで実況（本当はターンやフェーズ関連の実況は全部ここに集約すべきだと思う）
+                if (_turnInfo.TurnNumber == 0 && ((int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber) == 1))
+                {
+                    Logger.Instance.Log($"{this.GetType().Name}: {GetPlayer((int)(turnInfo[TurnInfo.ActivePlayerKey] ?? _turnInfo.ActivePlayer))} の新しいターン開始 - ターン番号: {(int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber)}");
+                    EventQueue.Queue.Enqueue($"{GetPlayer((int)(turnInfo[TurnInfo.ActivePlayerKey] ?? _turnInfo.ActivePlayer))} {Verb.NewTurnStarted} {(int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber)}");
+                }
+
                 // 更新
                 _turnInfo.Phase = turnInfo[TurnInfo.PhaseKey]?.ToString() ?? _turnInfo.Phase;
                 _turnInfo.Step = turnInfo[TurnInfo.StepKey]?.ToString() ?? _turnInfo.Step;
