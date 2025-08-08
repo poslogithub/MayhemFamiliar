@@ -113,7 +113,7 @@ namespace MayhemFamiliar
                 // プロセスグループID=0で全体に送信
                 GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
                 // 必要なら少し待つ
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 // 切り離し
                 FreeConsole();
             }

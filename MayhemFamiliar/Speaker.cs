@@ -8,6 +8,7 @@ using System.Net;
 using System.Speech.Synthesis;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace MayhemFamiliar
 {
@@ -133,6 +134,7 @@ namespace MayhemFamiliar
                     // 再生（System.Media.SoundPlayerを利用）
                     using (var player = new System.Media.SoundPlayer(tempFile))
                     {
+                        Logger.Instance.Log($"{this.GetType().Name}: 発話: {dialogue}");
                         player.PlaySync();
                     }
 
@@ -209,6 +211,8 @@ namespace MayhemFamiliar
         public void SetVoice(string key)
         {
             _styleId = int.Parse(key);
+            Logger.Instance.Log($"{this.GetType().Name}: 話者設定: {_styleId}");
+
         }
 
     }
@@ -221,7 +225,7 @@ namespace MayhemFamiliar
         }
         public void ProcessDialogue(string dialogue)
         {
-            Logger.Instance.Log($"{this.GetType().Name}: ダイアログを処理: {dialogue}", LogLevel.Debug);
+            Logger.Instance.Log($"{this.GetType().Name}: 発話: {dialogue}");
             _synthesizer.Speak(dialogue);
         }
         public List<IVoice> GetVoices()
@@ -236,7 +240,7 @@ namespace MayhemFamiliar
         }
         public void SetVoice(string key)
         {
-            Logger.Instance.Log($"{this.GetType().Name}: 音声を設定: {key}");
+            Logger.Instance.Log($"{this.GetType().Name}: 話者設定: {key}");
             _synthesizer.SelectVoice(key);
         }
         public void InitializeSpeaker() { }

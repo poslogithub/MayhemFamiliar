@@ -12,7 +12,7 @@ namespace MayhemFamiliar
         public const string Mulligan = "Mulligan";
         public const string GameStart = "GameStart";
         public const string GameOver = "GameOver";
-        public const string TurnStart = "TurnStart";
+        public const string NewTurnStarted = "NewTurnStarted";
         public static readonly string[] Speak = {
             ZoneTransferCategory.Discard,
             ZoneTransferCategory.PlayLand,
@@ -22,7 +22,7 @@ namespace MayhemFamiliar
             Verb.Mulligan,
             Verb.GameStart,
             Verb.GameOver,
-            Verb.TurnStart
+            Verb.NewTurnStarted
         };
     }
     internal class DialogueGenerator
@@ -70,6 +70,19 @@ namespace MayhemFamiliar
                 return;
             }
 
+            if (verb == Verb.NewTurnStarted)
+            {
+                if (int.TryParse(objective, out int turnNumber))
+                {
+                    if (turnNumber == 0)
+                    {
+                        // 0ターンの開始は無視（マリガンチェックなので）
+                        Logger.Instance.Log($"{this.GetType().Name}: 0ターンの開始は無視", LogLevel.Debug);
+                        return;
+                    }
+                }
+            }
+
             string dialogue = "";
             switch(verb)
             {
@@ -82,7 +95,7 @@ namespace MayhemFamiliar
                 case Verb.GameOver:
                     dialogue = "対戦ありがとうございました。";
                     break;
-                case Verb.TurnStart:
+                case Verb.NewTurnStarted:
                     switch (subject)
                     {
                         case Player.You:
@@ -119,7 +132,7 @@ namespace MayhemFamiliar
             {
                 if (!(subject == Player.Opponent && verb == ZoneTransferCategory.Draw))
                 {
-                    objective = ReplaceObjectiveDelimiters(objective);
+                    objective = DeleteObjectiveDelimiters(objective);
                     dialogue += objective + "を";
                 }
             }
@@ -177,7 +190,6 @@ namespace MayhemFamiliar
         {
             if (CultureInfo.CurrentUICulture.Name == "ja-JP")
             {
-                /*
                 // 目的語のデリミタを置換
                 int first = objective.IndexOf('"');
                 if (first == -1) return objective;
@@ -188,10 +200,15 @@ namespace MayhemFamiliar
                 chars[first] = '《';
                 chars[second] = '》';
                 return new string(chars);
-                */
+                // 目的語のデリミタを削除
                 objective = objective.Replace("\"", "");
             }
             return objective;
+        }
+        private string DeleteObjectiveDelimiters(string objective)
+        {
+            // 目的語のデリミタを削除
+            return objective.Replace("\"", "");
         }
     }
 }
