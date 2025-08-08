@@ -584,7 +584,7 @@ namespace MayhemFamiliar
                             break;
                         }
                     case AnnotationType.NewTurnStarted:
-                        Logger.Instance.Log($"{this.GetType().Name}: {GetPlayer(affectorId)} の新しいターン開始 - ターン番号: {_turnInfo.TurnNumber}");
+                        Logger.Instance.Log($"{this.GetType().Name}: {GetPlayer(affectorId)} のターン開始: {_turnInfo.TurnNumber}", LogLevel.Debug);
                         EventQueue.Queue.Enqueue($"{GetPlayer(affectorId)} {Verb.NewTurnStarted} {_turnInfo.TurnNumber}");
                         break;
                 }
@@ -595,11 +595,18 @@ namespace MayhemFamiliar
         {
             if (turnInfo != null)
             {
+                var newPhase = turnInfo[TurnInfo.PhaseKey]?.ToString() ?? _turnInfo.Phase;
+                var newStep = turnInfo[TurnInfo.StepKey]?.ToString() ?? _turnInfo.Step;
+                var newTurnNumber = (int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber);
+                var newActivePlayer = (int)(turnInfo[TurnInfo.ActivePlayerKey] ?? _turnInfo.ActivePlayer);
+                var newPriorityPlayer = (int)(turnInfo[TurnInfo.PriorityPlayerKey] ?? _turnInfo.PriorityPlayer);
+                var newDecisionPlayer = (int)(turnInfo[TurnInfo.DecisionPlayerKey] ?? _turnInfo.DecisionPlayer);
+                var newNextPhase = turnInfo[TurnInfo.NextPhaseKey]?.ToString() ?? _turnInfo.NextPhase;
                 // 先手第１ターンだけここで実況（本当はターンやフェーズ関連の実況は全部ここに集約すべきだと思う）
-                if (_turnInfo.TurnNumber == 0 && ((int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber) == 1))
+                if (_turnInfo.TurnNumber == 0 && newTurnNumber == 1)
                 {
-                    Logger.Instance.Log($"{this.GetType().Name}: {GetPlayer((int)(turnInfo[TurnInfo.ActivePlayerKey] ?? _turnInfo.ActivePlayer))} の新しいターン開始 - ターン番号: {(int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber)}");
-                    EventQueue.Queue.Enqueue($"{GetPlayer((int)(turnInfo[TurnInfo.ActivePlayerKey] ?? _turnInfo.ActivePlayer))} {Verb.NewTurnStarted} {(int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber)}");
+                    Logger.Instance.Log($"{this.GetType().Name}: {GetPlayer(newActivePlayer)} のターン開始: {newTurnNumber}", LogLevel.Debug);
+                    EventQueue.Queue.Enqueue($"{GetPlayer(newActivePlayer)} {Verb.NewTurnStarted} {newTurnNumber}");
                 }
 
                 // 更新
