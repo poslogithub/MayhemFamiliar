@@ -1,9 +1,10 @@
 # MayhemFamiliar
 
+![イメージ画像](sample.png)
+
 これは何？
 ---------
 MTG Arenaの対戦内容を実況してくれます。
-実況内容は追々増やしていく予定です。
 音声合成エンジンとして「Microsoft Speech API（SAPI）」および「VOICEVOX」に対応しています。
 
 使い方
@@ -26,3 +27,9 @@ LICENSE ファイルを参照してください。
 お問い合わせ先
 -------------
 X（旧Twitter）: https://x.com/poslog
+
+
+MayhemFamiliarはファンコンテンツ・ポリシーに沿った非公式のファンコンテンツです。
+ウィザーズ社の認可/許諾は得ていません。
+題材の一部に、ウィザーズ・オブ・ザ・コースト社の財産を含んでいます。
+©Wizards of the Coast LLC.
