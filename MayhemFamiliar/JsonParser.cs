@@ -130,13 +130,16 @@ namespace MayhemFamiliar
     }
     static class AnnotationType
     {
+        // 実況対象
+        public const string TokenCreated = "AnnotationType_TokenCreated";
+        public const string ModifiedLife = "AnnotationType_ModifiedLife";
+        public const string NewTurnStarted = "AnnotationType_NewTurnStarted";
+        // 実況対象外
         public const string AbilityInstanceCreated = "AnnotationType_AbilityInstanceCreated";
         public const string AbilityInstanceDeleted = "AnnotationType_AbilityInstanceDeleted";
         public const string ColorProduction = "AnnotationType_ColorProduction";
         public const string EnteredZoneThisTurn = "AnnotationType_EnteredZoneThisTurn";
         public const string ManaPaid = "AnnotationType_ManaPaid";
-        public const string ModifiedLife = "AnnotationType_ModifiedLife";
-        public const string NewTurnStarted = "AnnotationType_NewTurnStarted";
         public const string ObjectIdChanged = "AnnotationType_ObjectIdChanged";
         public const string PhaseOrStepModified = "AnnotationType_PhaseOrStepModified";
         public const string ResolutionStart = "AnnotationType_ResolutionStart";
@@ -144,6 +147,12 @@ namespace MayhemFamiliar
         public const string TappedUntappedPermanent = "AnnotationType_TappedUntappedPermanent";
         public const string UserActionTaken = "AnnotationType_UserActionTaken";
         public const string ZoneTransfer = "AnnotationType_ZoneTransfer";
+        public static Boolean IsQueueTarget(string type)
+        {
+            return type == TokenCreated ||
+                   type == ModifiedLife ||
+                   type == NewTurnStarted;
+        }
         public static Boolean IsKnown(string type)
         {
             return type == AbilityInstanceCreated ||
@@ -158,6 +167,7 @@ namespace MayhemFamiliar
                    type == ResolutionStart ||
                    type == ResolutionComplete ||
                    type == TappedUntappedPermanent ||
+                   type == TokenCreated ||
                    type == UserActionTaken ||
                    type == ZoneTransfer;
         }
@@ -244,18 +254,41 @@ namespace MayhemFamiliar
     }
     public static class ZoneTransferCategory
     {
+        // Active
         public const string CastSpell = "CastSpell";
-        public const string Damage = "SBA_Damage"; // クリーチャーへのダメージ
+        public const string Conjure = "Conjure";
         public const string Discard = "Discard";
         public const string Draw = "Draw";
         public const string Exile = "Exile";
         public const string Mill = "Mill";
-        public const string Nil = "nil";   // Fizzった
         public const string PlayLand = "PlayLand";
         public const string Sacrifice = "Sacrifice";
         public const string Resolve = "Resolve";
+        public const string Put = "Put";
         public const string Return = "Return";
-    }
+        // Passive
+        public const string SBA_Damage = "SBA_Damage";
+        public const string SBA_Deathtouch = "SBA_Deathtouch";
+        public const string SBA_ZeroLoyalty = "SBA_ZeroLoyalty";
+        public const string SBA_ZeroToughness = "SBA_ZeroToughness";
+        public const string SBA_UnattachedAura = "SBA_UnattachedAura";
+        public const string Destroy = "Destroy";
+        public const string Nil = "nil";   // Fizzった
+        public static Boolean IsActive(string category)
+        {
+            return category == CastSpell ||
+                   category == Conjure ||
+                   category == Discard ||
+                   category == Draw ||
+                   category == Exile ||
+                   category == Mill ||
+                   category == PlayLand ||
+                   category == Put ||
+                   category == Sacrifice ||
+                   category == Resolve ||
+                   category == Return;
+        }
+}
     public static class PlayerWho
     {
         public const string You = "You";
@@ -469,7 +502,7 @@ namespace MayhemFamiliar
                     break;
                 case GreMessageType.MulliganReq:
                     Logger.Instance.Log($"{this.GetType().Name}: GREMessageType_MulliganReq");
-                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {Verb.Mulligan}");
+                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {GreMessageType.MulliganReq}");
                     break;
                 case GreMessageType.GameStateMessage:
                 case GreMessageType.QueuedGameStateMessage:
@@ -542,7 +575,7 @@ namespace MayhemFamiliar
             if (gameInfo[Key.Stage]?.ToString() == GameStage.Start)
             {
                 Logger.Instance.Log($"{this.GetType().Name}: ゲーム開始");
-                EventQueue.Queue.Enqueue($"{PlayerWho.You} {Verb.GameStart}");
+                EventQueue.Queue.Enqueue($"{PlayerWho.You} {GameStage.Start}");
             }
 
             // ゲーム終了連絡
@@ -550,7 +583,7 @@ namespace MayhemFamiliar
                 gameInfo[MatchState.Key]?.ToString() == MatchState.GameComplete)
             {
                 Logger.Instance.Log($"{this.GetType().Name}: ゲーム終了");
-                EventQueue.Queue.Enqueue($"{PlayerWho.You} {Verb.GameOver}");
+                EventQueue.Queue.Enqueue($"{PlayerWho.You} {GameStage.GameOver}");
             }
         }
         private void ProcessPlayers(JToken players)
@@ -586,12 +619,11 @@ namespace MayhemFamiliar
                 int[] affectedIds = annotation[Key.AffectedIds]?.ToObject<int[]>() ?? Array.Empty<int>();
                 string playerWho;
                 string annotationType = annotation[Key.Type]?[0]?.ToString() ?? "";
-                if (string.IsNullOrEmpty(annotationType) || !AnnotationType.IsKnown(annotationType))
+                if (string.IsNullOrEmpty(annotationType))
                 {
-                    Logger.Instance.Log($"{this.GetType().Name}: 未知のアノテーションタイプ: {annotationType}", LogLevel.Debug);
                     continue;
                 }
-                switch (annotation[Key.Type]?[0]?.ToString())
+                switch (annotationType)
                 {
                     case AnnotationType.ObjectIdChanged
                         when annotation[Key.Details] != null:
@@ -599,6 +631,8 @@ namespace MayhemFamiliar
                             // オブジェクトIDの変更
                             int origId = (int)annotation[Key.Details][0][Key.ValueInt32][0];
                             int newId = (int)annotation[Key.Details][1][Key.ValueInt32][0];
+
+                            // ProcessZoneと競合するので、newIdが存在しない場合だけGameObjectを生成する
                             if (!_gameObjects.ContainsKey(newId))
                             {
                                 _gameObjects[newId] = new GameObject(
@@ -611,9 +645,45 @@ namespace MayhemFamiliar
                                     _gameObjects[origId].ControllerSeatId);
                                 Logger.Instance.Log($"{this.GetType().Name}: オブジェクトID変更 - OrigId: {origId}, NewId: {newId}, {_gameObjects[newId].GetDescription()}", LogLevel.Debug);
                             }
-                            // ProcessZoneと競合するので、存在しない時しかやらない
                             break;
                         }
+                    case AnnotationType.TokenCreated:
+                        {
+                            foreach (int affectedId in affectedIds)
+                            {
+                                // ProcessZoneと競合するので、newIdが存在しない場合だけGameObjectを生成する
+                                if (!_gameObjects.ContainsKey(affectedId))
+                                {
+                                    _gameObjects[affectedId] = new GameObject(
+                                        _gameObjects[affectedId].GrpId,
+                                        _gameObjects[affectedId].Name,
+                                        _gameObjects[affectedId].Type,
+                                        _gameObjects[affectedId].ZoneId,
+                                        _gameObjects[affectedId].Visible,
+                                        _gameObjects[affectedId].OwnerSeatId,
+                                        _gameObjects[affectedId].ControllerSeatId);
+                                }
+                                Logger.Instance.Log($"{this.GetType().Name}: トークン生成 - id: {affectedId}, {_gameObjects[affectedId].GetDescription()}", LogLevel.Debug);
+                                EventQueue.Queue.Enqueue($"{GetPlayerWho(_gameObjects[affectedId].ControllerSeatId)} {annotationType} \"{_gameObjects[affectedId].Name}\"");
+                            }
+                            break;
+                        }
+                    case AnnotationType.NewTurnStarted:
+                        Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(affectorId)} のターン開始: {_turnInfo.TurnNumber}", LogLevel.Debug);
+                        EventQueue.Queue.Enqueue($"{GetPlayerWho(affectorId)} {AnnotationType.NewTurnStarted} {_turnInfo.TurnNumber}");
+                        break;
+                    case AnnotationType.ModifiedLife:
+                        int lifeDiff = (int)(annotation[Key.Details][0][Key.ValueInt32][0] ?? 0);
+                        if (lifeDiff == 0) break;
+                        foreach (int affectedId in affectedIds)
+                        {
+                            var player = GetPlayer(affectedId);
+                            if (player == null) continue;
+                            Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(affectedId)} のライフ変動: {player.Life} -> {player.Life + lifeDiff}", LogLevel.Debug);
+                            player.Life += lifeDiff;
+                            EventQueue.Queue.Enqueue($"{GetPlayerWho(affectedId)} {AnnotationType.ModifiedLife} {lifeDiff} {player.Life}");
+                        }
+                        break;
                     case AnnotationType.ZoneTransfer
                         when annotation[Key.Details] != null:
                         {
@@ -624,7 +694,7 @@ namespace MayhemFamiliar
                             if (affectorId == Unknown.Id)
                             {
                                 foreach (int seadId in new List<int> { 1, 2 })
-                                { 
+                                {
                                     if (ZoneId.PlayerZones[seadId].Contains(zoneSrcId) || ZoneId.PlayerZones[seadId].Contains(zoneDestId))
                                     {
                                         affectorId = seadId;
@@ -633,7 +703,7 @@ namespace MayhemFamiliar
                             }
                             // 【改善可能】affectorIdが10未満ならプレイヤー、そうでないならGameObjectのcontrollerかownerとする。
                             // 10は仮。いずれプレイヤー数が増える可能性があるので。
-                            playerWho = affectorId < 10 ? GetPlayerWho(affectorId) : 
+                            playerWho = affectorId < 10 ? GetPlayerWho(affectorId) :
                                 (_gameObjects[affectorId].ControllerSeatId != Unknown.ControllerSeatId ? GetPlayerWho(_gameObjects[affectorId].ControllerSeatId) :
                                     (_gameObjects[affectorId].OwnerSeatId != Unknown.OwnerSeatId ? GetPlayerWho(_gameObjects[affectorId].OwnerSeatId) : Unknown.Player)
                                 );
@@ -648,21 +718,21 @@ namespace MayhemFamiliar
                             }
                             break;
                         }
-                    case AnnotationType.NewTurnStarted:
-                        Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(affectorId)} のターン開始: {_turnInfo.TurnNumber}", LogLevel.Debug);
-                        EventQueue.Queue.Enqueue($"{GetPlayerWho(affectorId)} {Verb.NewTurnStarted} {_turnInfo.TurnNumber}");
+                    case AnnotationType.AbilityInstanceCreated:
+                    case AnnotationType.AbilityInstanceDeleted:
+                    case AnnotationType.ResolutionStart:
+                    case AnnotationType.ResolutionComplete:
+                    case AnnotationType.TappedUntappedPermanent:
+                    case AnnotationType.ColorProduction:
+                    case AnnotationType.ManaPaid:
+                    case AnnotationType.EnteredZoneThisTurn:
+                    case AnnotationType.UserActionTaken:
+                    case AnnotationType.PhaseOrStepModified:
+                        // 何もしない。本当はDialogueGenerator側で判断すべきだが、いったんここで見切る。
+                        Logger.Instance.Log($"{this.GetType().Name}: 無視するAnnotationType - {annotationType}", LogLevel.Debug);
                         break;
-                    case AnnotationType.ModifiedLife:
-                        int lifeDiff = (int)(annotation[Key.Details][0][Key.ValueInt32][0] ?? 0);
-                        if (lifeDiff == 0) break;
-                        foreach (int affectedId in affectedIds)
-                        {
-                            var player = GetPlayer(affectedId);
-                            if (player == null) continue;
-                            Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(affectedId)} のライフ変動: {player.Life} -> {player.Life + lifeDiff}", LogLevel.Debug);
-                            player.Life += lifeDiff;
-                            EventQueue.Queue.Enqueue($"{GetPlayerWho(affectedId)} {Verb.ModifiedLife} {lifeDiff} {player.Life}");
-                        }
+                    default:
+                        Logger.Instance.Log($"{this.GetType().Name}: 未知のアノテーションタイプ: {annotationType}", LogLevel.Debug);
                         break;
                 }
             }
@@ -683,7 +753,7 @@ namespace MayhemFamiliar
                 if (_turnInfo.TurnNumber == 0 && newTurnNumber == 1)
                 {
                     Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(newActivePlayer)} のターン開始: {newTurnNumber}", LogLevel.Debug);
-                    EventQueue.Queue.Enqueue($"{GetPlayerWho(newActivePlayer)} {Verb.NewTurnStarted} {newTurnNumber}");
+                    EventQueue.Queue.Enqueue($"{GetPlayerWho(newActivePlayer)} {AnnotationType.NewTurnStarted} {newTurnNumber}");
                 }
 
                 // 更新

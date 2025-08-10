@@ -7,31 +7,28 @@ using System.Threading.Tasks;
 
 namespace MayhemFamiliar
 {
-    class Verb
-    {
-        public const string Mulligan = "Mulligan";
-        public const string GameStart = "GameStart";
-        public const string GameOver = "GameOver";
-        public const string NewTurnStarted = "NewTurnStarted";
-        public const string ModifiedLife = "ModifiedLife";
-        public static readonly string[] Speak = {
-            ZoneTransferCategory.Discard,
-            ZoneTransferCategory.PlayLand,
-            ZoneTransferCategory.CastSpell,
-            ZoneTransferCategory.Draw,
-            ZoneTransferCategory.Sacrifice,
-            Verb.Mulligan,
-            Verb.GameStart,
-            Verb.GameOver,
-            Verb.NewTurnStarted,
-            Verb.ModifiedLife
-        };
-    }
     internal class DialogueGenerator
     {
-        public DialogueGenerator()
-        {
-        }
+        private static readonly string[] IgnoreVerbs = {
+            ZoneTransferCategory.Mill,
+            ZoneTransferCategory.Nil,
+            ZoneTransferCategory.Resolve,
+            ZoneTransferCategory.Put,
+        };
+        private static readonly string[] ActiveVerbs = {
+            ZoneTransferCategory.CastSpell,
+            ZoneTransferCategory.Conjure,
+            ZoneTransferCategory.Discard,
+            ZoneTransferCategory.Draw,
+            ZoneTransferCategory.Exile,
+            ZoneTransferCategory.Mill,
+            ZoneTransferCategory.PlayLand,
+            ZoneTransferCategory.Put,
+            ZoneTransferCategory.Sacrifice,
+            ZoneTransferCategory.Resolve,
+            ZoneTransferCategory.Return,
+            AnnotationType.TokenCreated,
+        };
         public async Task Start(CancellationToken cancellationToken)
         {
             try
@@ -67,12 +64,13 @@ namespace MayhemFamiliar
             string objective = "";
             SplitEventString(eventString, ref subject, ref verb, ref objective);
 
-            if (!Verb.Speak.Contains(verb))
+            if (IgnoreVerbs.Contains(verb))
             {
+                Logger.Instance.Log($"{this.GetType().Name}: 無視するアクション - {verb}", LogLevel.Debug);
                 return;
             }
 
-            if (verb == Verb.NewTurnStarted)
+            if (verb == AnnotationType.NewTurnStarted)
             {
                 if (int.TryParse(objective, out int turnNumber))
                 {
@@ -88,16 +86,16 @@ namespace MayhemFamiliar
             string dialogue = "";
             switch (verb)
             {
-                case Verb.Mulligan:
+                case GreMessageType.MulliganReq:
                     dialogue = "マリガンチェック。";
                     break;
-                case Verb.GameStart:
+                case GameStage.Start:
                     dialogue = "対戦よろしくお願いします。";
                     break;
-                case Verb.GameOver:
+                case GameStage.GameOver:
                     dialogue = "対戦ありがとうございました。";
                     break;
-                case Verb.NewTurnStarted:
+                case AnnotationType.NewTurnStarted:
                     switch (subject)
                     {
                         case PlayerWho.You:
@@ -111,7 +109,7 @@ namespace MayhemFamiliar
                             break;
                     }
                     break;
-                case Verb.ModifiedLife:
+                case AnnotationType.ModifiedLife:
                     string[] parts = objective.Split(' ');
                     if (parts.Length >= 2 &&
                         int.TryParse(parts[0], out int lifeDiff) &&
@@ -147,57 +145,117 @@ namespace MayhemFamiliar
                     }
                     else
                     {
-                        Logger.Instance.Log($"{this.GetType().Name}: ModifiedLifeの形式が不正: {objective}", LogLevel.Error);
+                        Logger.Instance.Log($"{this.GetType().Name}: {verb}の形式が不正: {objective}", LogLevel.Error);
                         return;
                     }
                     break;
             }
-            if (!String.IsNullOrEmpty(dialogue))
+            if (!string.IsNullOrEmpty(dialogue))
             {
                 Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
                 DialogueQueue.Queue.Enqueue(dialogue);
                 return;
             }
 
-            switch (subject)
+            if (ActiveVerbs.Contains(verb))
             {
-                case PlayerWho.You:
-                    break;
-                case PlayerWho.Opponent:
-                    dialogue = "お相手が";
-                    break;
-                default:
-                    dialogue = "不明なプレイヤーが";
-                    break;
-            }
-            if (!String.IsNullOrEmpty(objective))
-            {
-                if (!(subject == PlayerWho.Opponent && verb == ZoneTransferCategory.Draw))
+                switch (subject)
                 {
-                    objective = RemoveObjectiveDelimiters(objective);
-                    dialogue += objective + "を";
+                    case PlayerWho.You:
+                        break;
+                    case PlayerWho.Opponent:
+                        dialogue = "お相手が";
+                        break;
+                    default:
+                        dialogue = "不明なプレイヤーが";
+                        break;
+                }
+                if (!string.IsNullOrEmpty(objective))
+                {
+                    if (!(subject == PlayerWho.Opponent && verb == ZoneTransferCategory.Draw))
+                    {
+                        objective = RemoveObjectiveDelimiters(objective);
+                        dialogue += objective + "を";
+                    }
+                }
+                switch (verb)
+                {
+                    case ZoneTransferCategory.CastSpell:
+                        dialogue += "キャスト。";
+                        break;
+                    case ZoneTransferCategory.Conjure:
+                        dialogue += "創出。";
+                        break;
+                    case ZoneTransferCategory.Discard:
+                        dialogue += "ディスカード。";
+                        break;
+                    case ZoneTransferCategory.Draw:
+                        dialogue += "ドロー。";
+                        break;
+                    case ZoneTransferCategory.Exile:
+                        dialogue += "追放。";
+                        break;
+                    case ZoneTransferCategory.PlayLand:
+                        dialogue += "プレイ。";
+                        break;
+                    case ZoneTransferCategory.Sacrifice:
+                        dialogue += "生け贄に。";
+                        break;
+                    case ZoneTransferCategory.Return:
+                        dialogue += "戦場に。";
+                        break;
+                    case ZoneTransferCategory.Put:
+                    case ZoneTransferCategory.Resolve:
+                        // 実況しない
+                        break;
+                    case AnnotationType.TokenCreated:
+                        dialogue += "生成。";
+                        break;
+                    default:
+                        dialogue += "不明なアクション。";
+                        Logger.Instance.Log($"{this.GetType().Name}: 不明なアクション - {verb}", LogLevel.Debug);
+                        break;
                 }
             }
-            switch (verb)
-            {
-                case ZoneTransferCategory.CastSpell:
-                    dialogue += "キャスト。";
-                    break;
-                case ZoneTransferCategory.Discard:
-                    dialogue += "ディスカード。";
-                    break;
-                case ZoneTransferCategory.Draw:
-                    dialogue += "ドロー。";
-                    break;
-                case ZoneTransferCategory.PlayLand:
-                    dialogue += "プレイ。";
-                    break;
-                case ZoneTransferCategory.Sacrifice:
-                    dialogue += "生け贄に。";
-                    break;
-                default:
-                    dialogue += "不明なアクション。";
-                    break;
+            else {
+                switch (subject)
+                {
+                    case PlayerWho.You:
+                        break;
+                    case PlayerWho.Opponent:
+                        dialogue = "お相手の";
+                        break;
+                    default:
+                        dialogue = "不明なプレイヤーの";
+                        break;
+                }
+                if (!string.IsNullOrEmpty(objective))
+                {
+                    objective = RemoveObjectiveDelimiters(objective);
+                    dialogue += objective + "が";
+                }
+                switch (verb)
+                {
+                    case ZoneTransferCategory.SBA_Damage:
+                    case ZoneTransferCategory.SBA_Deathtouch:
+                    case ZoneTransferCategory.SBA_ZeroLoyalty:
+                    case ZoneTransferCategory.SBA_ZeroToughness:
+                        dialogue += "死亡。";
+                        break;
+                    case ZoneTransferCategory.SBA_UnattachedAura:
+                        dialogue += "墓地に。";
+                        break;
+                    case ZoneTransferCategory.Destroy:
+                        dialogue += "破壊。";
+                        break;
+                    case ZoneTransferCategory.Nil:
+                        // 実況しない
+                        break;
+                    default:
+                        dialogue += "不明なアクション。";
+                        Logger.Instance.Log($"{this.GetType().Name}: 不明なアクション - {verb}", LogLevel.Debug);
+                        break;
+                }
             }
             Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
             DialogueQueue.Queue.Enqueue(dialogue);
