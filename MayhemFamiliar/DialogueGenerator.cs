@@ -13,6 +13,7 @@ namespace MayhemFamiliar
         public const string GameStart = "GameStart";
         public const string GameOver = "GameOver";
         public const string NewTurnStarted = "NewTurnStarted";
+        public const string ModifiedLife = "ModifiedLife";
         public static readonly string[] Speak = {
             ZoneTransferCategory.Discard,
             ZoneTransferCategory.PlayLand,
@@ -22,7 +23,8 @@ namespace MayhemFamiliar
             Verb.Mulligan,
             Verb.GameStart,
             Verb.GameOver,
-            Verb.NewTurnStarted
+            Verb.NewTurnStarted,
+            Verb.ModifiedLife
         };
     }
     internal class DialogueGenerator
@@ -84,7 +86,7 @@ namespace MayhemFamiliar
             }
 
             string dialogue = "";
-            switch(verb)
+            switch (verb)
             {
                 case Verb.Mulligan:
                     dialogue = "マリガンチェック。";
@@ -98,15 +100,55 @@ namespace MayhemFamiliar
                 case Verb.NewTurnStarted:
                     switch (subject)
                     {
-                        case Player.You:
+                        case PlayerWho.You:
                             dialogue = "こちらのターン。";
                             break;
-                        case Player.Opponent:
+                        case PlayerWho.Opponent:
                             dialogue = "お相手のターン。";
                             break;
                         default:
                             dialogue = "誰かのターン。";
                             break;
+                    }
+                    break;
+                case Verb.ModifiedLife:
+                    string[] parts = objective.Split(' ');
+                    if (parts.Length >= 2 &&
+                        int.TryParse(parts[0], out int lifeDiff) &&
+                        int.TryParse(parts[1], out int lifeTotal))
+                    {
+                        // ライフの変更を処理
+                        switch (subject)
+                        {
+                            case PlayerWho.You:
+                                if (lifeDiff < 0)
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点受けて、ライフは{lifeTotal}。";
+                                }
+                                else
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点回復して、ライフは{lifeTotal}。";
+                                }
+                                break;
+                            case PlayerWho.Opponent:
+                                if (lifeDiff < 0)
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点与えて、お相手のライフは{lifeTotal}。";
+                                }
+                                else
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点回復されて、お相手のライフは{lifeTotal}。";
+                                }
+                                break;
+                            default:
+                                dialogue = $"不明なプレイヤーのライフが{lifeDiff}点変更。";
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        Logger.Instance.Log($"{this.GetType().Name}: ModifiedLifeの形式が不正: {objective}", LogLevel.Error);
+                        return;
                     }
                     break;
             }
@@ -119,9 +161,9 @@ namespace MayhemFamiliar
 
             switch (subject)
             {
-                case Player.You:
+                case PlayerWho.You:
                     break;
-                case Player.Opponent:
+                case PlayerWho.Opponent:
                     dialogue = "お相手が";
                     break;
                 default:
@@ -130,9 +172,9 @@ namespace MayhemFamiliar
             }
             if (!String.IsNullOrEmpty(objective))
             {
-                if (!(subject == Player.Opponent && verb == ZoneTransferCategory.Draw))
+                if (!(subject == PlayerWho.Opponent && verb == ZoneTransferCategory.Draw))
                 {
-                    objective = DeleteObjectiveDelimiters(objective);
+                    objective = RemoveObjectiveDelimiters(objective);
                     dialogue += objective + "を";
                 }
             }
@@ -151,10 +193,10 @@ namespace MayhemFamiliar
                     dialogue += "プレイ。";
                     break;
                 case ZoneTransferCategory.Sacrifice:
-                    dialogue += "生け贄。";
+                    dialogue += "生け贄に。";
                     break;
                 default:
-                    dialogue += "不明な動作。";
+                    dialogue += "不明なアクション。";
                     break;
             }
             Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
@@ -169,7 +211,6 @@ namespace MayhemFamiliar
             }
 
             // 半角空白で分割、最大3つに制限
-            // string[] words = eventString.Split(' ', 3);
             string[] words = eventString.Split(new char[]{' '}, 3);
 
             // 配列の長さに応じて割り当て
@@ -205,10 +246,11 @@ namespace MayhemFamiliar
             }
             return objective;
         }
-        private string DeleteObjectiveDelimiters(string objective)
+        private string RemoveObjectiveDelimiters(string objective)
         {
             // 目的語のデリミタを削除
             return objective.Replace("\"", "");
         }
+
     }
 }
