@@ -79,17 +79,8 @@ namespace MayhemFamiliar
             if (string.IsNullOrEmpty(text))
                 return text;
 
-            // 半角括弧、全角括弧、<～>を正規表現でマッチ
-            string pattern = @"(\([^\)]*\)|（[^）]*）)";
-            return Regex.Replace(text, pattern, string.Empty);
-        }
-        private static string RemoveTags(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-                return text;
-
-            // <～> を正規表現でマッチ
-            string pattern = @"<[^>]*>";
+            // 半角括弧、全角括弧、山括弧を正規表現でマッチ
+            string pattern = @"(\([^\)]*\)|（[^）]*）|<[^>]+>)";
             return Regex.Replace(text, pattern, string.Empty);
         }
 
