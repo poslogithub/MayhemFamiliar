@@ -30,6 +30,6 @@ using System.Runtime.InteropServices;
 //      ビルド番号
 //      リビジョン
 //
-[assembly: AssemblyVersion("0.1.3")]
-[assembly: AssemblyFileVersion("0.1.3")]
+[assembly: AssemblyVersion("0.1.2.1")]
+[assembly: AssemblyFileVersion("0.1.2.1")]
 [assembly: NeutralResourcesLanguage("ja")]
