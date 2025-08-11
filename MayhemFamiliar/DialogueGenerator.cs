@@ -12,8 +12,9 @@ namespace MayhemFamiliar
         private static readonly string[] IgnoreVerbs = {
             ZoneTransferCategory.Mill,
             ZoneTransferCategory.Nil,
-            ZoneTransferCategory.Resolve,
             ZoneTransferCategory.Put,
+            ZoneTransferCategory.Resolve,
+            ZoneTransferCategory.Surveil,
         };
         private static readonly string[] ActiveVerbs = {
             ZoneTransferCategory.CastSpell,
@@ -27,6 +28,7 @@ namespace MayhemFamiliar
             ZoneTransferCategory.Sacrifice,
             ZoneTransferCategory.Resolve,
             ZoneTransferCategory.Return,
+            ZoneTransferCategory.Warp,
             AnnotationType.TokenCreated,
         };
         public async Task Start(CancellationToken cancellationToken)
@@ -140,7 +142,8 @@ namespace MayhemFamiliar
                                 break;
                             default:
                                 dialogue = $"不明なプレイヤーのライフが{lifeDiff}点変更。";
-                                break;
+                                Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
+                                return;
                         }
                     }
                     else
@@ -204,17 +207,16 @@ namespace MayhemFamiliar
                     case ZoneTransferCategory.Return:
                         dialogue += "戦場に。";
                         break;
-                    case ZoneTransferCategory.Put:
-                    case ZoneTransferCategory.Resolve:
-                        // 実況しない
+                    case ZoneTransferCategory.Warp:
+                        dialogue += "ワープ。";
                         break;
                     case AnnotationType.TokenCreated:
                         dialogue += "生成。";
                         break;
                     default:
                         dialogue += "不明なアクション。";
-                        Logger.Instance.Log($"{this.GetType().Name}: 不明なアクション - {verb}", LogLevel.Debug);
-                        break;
+                        Logger.Instance.Log($"{this.GetType().Name}: {dialogue} - {verb}", LogLevel.Debug);
+                        return;
                 }
             }
             else {
@@ -248,13 +250,10 @@ namespace MayhemFamiliar
                     case ZoneTransferCategory.Destroy:
                         dialogue += "破壊。";
                         break;
-                    case ZoneTransferCategory.Nil:
-                        // 実況しない
-                        break;
                     default:
                         dialogue += "不明なアクション。";
-                        Logger.Instance.Log($"{this.GetType().Name}: 不明なアクション - {verb}", LogLevel.Debug);
-                        break;
+                        Logger.Instance.Log($"{this.GetType().Name}: {dialogue} - {verb}", LogLevel.Debug);
+                        return;
                 }
             }
             Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);

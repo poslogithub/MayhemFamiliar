@@ -24,21 +24,6 @@ namespace MayhemFamiliar
     {
         public const string Player = "ControllerType_Player";
     }
-    static class ZoneType
-    {
-        public const string Revealed = "ZoneType_Revealed";
-        public const string Suppressed = "ZoneType_Suppressed";
-        public const string Pending = "ZoneType_Pending";
-        public const string Command = "ZoneType_Command";
-        public const string Stack = "ZoneType_Stack";
-        public const string Battlefield = "ZoneType_Battlefield";
-        public const string Exile = "ZoneType_Exile";
-        public const string Limbo = "ZoneType_Limbo";
-        public const string Hand = "ZoneType_Hand";
-        public const string Library = "ZoneType_Library";
-        public const string Graveyard = "ZoneType_Graveyard";
-        public const string Sideboard = "ZoneType_Sideboard";
-    }
     static class ZoneId
     {
         public static Dictionary<int, int> Revealed = new Dictionary<int, int>()
@@ -78,40 +63,78 @@ namespace MayhemFamiliar
             { 1, new List<int>() { Revealed[1], Hand[1], Library[1], Graveyard[1], Sideboard[1] } },
             { 2, new List<int>() { Revealed[2], Hand[2], Library[2], Graveyard[2], Sideboard[2] } }
         };
+        public static readonly Dictionary<int, string> ZoneTypes = new Dictionary<int, string>()
+        {
+            { Revealed[1], "ZoneType_Revealed" },
+            { Revealed[2], "ZoneType_Revealed" },
+            { Suppressed, "ZoneType_Suppressed" },
+            { Pending, "ZoneType_Pending" },
+            { Command, "ZoneType_Command" },
+            { Stack, "ZoneType_Stack" },
+            { Battlefield, "ZoneType_Battlefield" },
+            { Exile, "ZoneType_Exile" },
+            { Limbo, "ZoneType_Limbo" },
+            { Hand[1], "ZoneType_Hand" },
+            { Hand[2], "ZoneType_Hand" },
+            { Library[1], "ZoneType_Library" },
+            { Library[2], "ZoneType_Library" },
+            { Graveyard[1], "ZoneType_Graveyard" },
+            { Graveyard[2], "GravZoneType_Graveyardeyard2" },
+            { Sideboard[1], "ZoneType_Sideboard" },
+            { Sideboard[2], "ZoneType_Sideboard" }
+        };
     }
     static class GreMessageType
     {
-        public const string ConnectResp = "GREMessageType_ConnectResp";
-        public const string DieRollResultsResp = "GREMessageType_DieRollResultsResp";
         public const string GameStateMessage = "GREMessageType_GameStateMessage";
-        public const string MulliganReq = "GREMessageType_MulliganReq";
-        public const string PromptReq = "GREMessageType_PromptReq";
         public const string QueuedGameStateMessage = "GREMessageType_QueuedGameStateMessage";
-        public const string SelectNReq = "GREMessageType_SelectNReq";
-        public const string SetSettingsResp = "GREMessageType_SetSettingsResp";
-        public const string UIMessage = "GREMessageType_UIMessage";
+        public const string MulliganReq = "GREMessageType_MulliganReq"; // 「マリガンチェック」
 
-        public static Boolean IsKnown(string type)
+        public const string ActionsAvailableReq = "GREMessageType_ActionsAvailableReq";
+        public const string ChooseStartingPlayerReq = "GREMessageType_ChooseStartingPlayerReq";
+        public const string ConnectResp = "GREMessageType_ConnectResp";
+        public const string DeclareAttackersReq = "GREMessageType_DeclareAttackersReq";
+        public const string DeclareBlockersReq = "GREMessageType_DeclareBlockersReq";
+        public const string DieRollResultsResp = "GREMessageType_DieRollResultsResp";
+        public const string GroupReq = "GREMessageType_GroupReq";
+        public const string IntermissionReq = "GREMessageType_IntermissionReq";
+        public const string OptionalActionMessage = "GREMessageType_OptionalActionMessage";
+        public const string PayCostsReq = "GREMessageType_PayCostsReq";
+        public const string PromptReq = "GREMessageType_PromptReq";
+        public const string SelectNReq = "GREMessageType_SelectNReq";
+        public const string SelectTargetsReq = "GREMessageType_SelectTargetsReq";
+        public const string SetSettingsResp = "GREMessageType_SetSettingsResp";
+        public const string SubmitAttackersResp = "GREMessageType_SubmitAttackersResp"; // TODO: 「アタック」
+        public const string SubmitBlockersResp = "GREMessageType_SubmitBlockersResp";   // TODO: 「ブロック」
+        public const string SubmitTargetsResp = "GREMessageType_SubmitTargetsResp";
+        public const string UIMessage = "GREMessageType_UIMessage";
+        public static string[] IgnoreType =
         {
-            return type == ConnectResp ||
-                   type == DieRollResultsResp ||
-                   type == GameStateMessage ||
-                   type == MulliganReq ||
-                   type == PromptReq ||
-                   type == QueuedGameStateMessage ||
-                   type == SelectNReq ||
-                   type == SetSettingsResp ||
-                   type == UIMessage;
-        }
+            ActionsAvailableReq,
+            ChooseStartingPlayerReq,
+            ConnectResp,
+            DeclareAttackersReq,
+            DeclareBlockersReq,
+            DieRollResultsResp,
+            GroupReq,
+            IntermissionReq,
+            OptionalActionMessage,
+            PayCostsReq,
+            PromptReq,
+            SelectNReq,
+            SubmitAttackersResp,
+            SubmitBlockersResp,
+            SelectTargetsReq,
+            SetSettingsResp,
+            SubmitTargetsResp,
+            UIMessage,
+        };
     }
     static class GameStateType
     {
         public const string Full = "GameStateType_Full";
         public const string Diff = "GameStateType_Diff";
-        public static Boolean IsKnown(string type)
-        {
-            return type == Full || type == Diff;
-        }
+
     }
     static class GameObjectType
     {
@@ -130,47 +153,71 @@ namespace MayhemFamiliar
     }
     static class AnnotationType
     {
-        // 実況対象
-        public const string TokenCreated = "AnnotationType_TokenCreated";
         public const string ModifiedLife = "AnnotationType_ModifiedLife";
         public const string NewTurnStarted = "AnnotationType_NewTurnStarted";
-        // 実況対象外
+        public const string ObjectIdChanged = "AnnotationType_ObjectIdChanged";
+        public const string TokenCreated = "AnnotationType_TokenCreated";
+        public const string ZoneTransfer = "AnnotationType_ZoneTransfer";
+
         public const string AbilityInstanceCreated = "AnnotationType_AbilityInstanceCreated";
         public const string AbilityInstanceDeleted = "AnnotationType_AbilityInstanceDeleted";
+        public const string AttachmentCreated = "AnnotationType_AttachmentCreated";
+        public const string ChoiceResult = "AnnotationType_ChoiceResult";
         public const string ColorProduction = "AnnotationType_ColorProduction";
+        public const string ControllerChanged = "AnnotationType_ControllerChanged";
+        public const string CounterAdded = "AnnotationType_CounterAdded";
+        public const string DamageDealt = "AnnotationType_DamageDealt";
         public const string EnteredZoneThisTurn = "AnnotationType_EnteredZoneThisTurn";
+        public const string LayeredEffectCreated = "AnnotationType_LayeredEffectCreated";
+        public const string LayeredEffectDestroyed = "AnnotationType_LayeredEffectDestroyed";
         public const string ManaPaid = "AnnotationType_ManaPaid";
-        public const string ObjectIdChanged = "AnnotationType_ObjectIdChanged";
+        public const string MultistepEffectStarted = "AnnotationType_MultistepEffectStarted";
+        public const string MultistepEffectComplete = "AnnotationType_MultistepEffectComplete";
         public const string PhaseOrStepModified = "AnnotationType_PhaseOrStepModified";
+        public const string PlayerSelectingTargets = "AnnotationType_PlayerSelectingTargets";
+        public const string PlayerSubmittedTargets = "AnnotationType_PlayerSubmittedTargets";
+        public const string PowerToughnessModCreated = "AnnotationType_PowerToughnessModCreated";
         public const string ResolutionStart = "AnnotationType_ResolutionStart";
         public const string ResolutionComplete = "AnnotationType_ResolutionComplete";
+        public const string RevealedCardCreated = "AnnotationType_RevealedCardCreated";
+        public const string RevealedCardDeleted = "AnnotationType_RevealedCardDeleted";
+        public const string ShouldntPlay = "AnnotationType_ShouldntPlay";
+        public const string Shuffle = "AnnotationType_Shuffle";
+        public const string SyntheticEvent = "AnnotationType_SyntheticEvent";
         public const string TappedUntappedPermanent = "AnnotationType_TappedUntappedPermanent";
+        public const string TokenDeleted = "AnnotationType_TokenDeleted";
         public const string UserActionTaken = "AnnotationType_UserActionTaken";
-        public const string ZoneTransfer = "AnnotationType_ZoneTransfer";
-        public static Boolean IsQueueTarget(string type)
+        public static readonly string[] Ignore = new string[]
         {
-            return type == TokenCreated ||
-                   type == ModifiedLife ||
-                   type == NewTurnStarted;
-        }
-        public static Boolean IsKnown(string type)
-        {
-            return type == AbilityInstanceCreated ||
-                   type == AbilityInstanceDeleted ||
-                   type == ColorProduction ||
-                   type == EnteredZoneThisTurn ||
-                   type == ManaPaid ||
-                   type == ModifiedLife ||
-                   type == NewTurnStarted ||
-                   type == ObjectIdChanged ||
-                   type == PhaseOrStepModified ||
-                   type == ResolutionStart ||
-                   type == ResolutionComplete ||
-                   type == TappedUntappedPermanent ||
-                   type == TokenCreated ||
-                   type == UserActionTaken ||
-                   type == ZoneTransfer;
-        }
+            AbilityInstanceCreated,
+            AbilityInstanceDeleted,
+            AttachmentCreated,
+            ChoiceResult,
+            ColorProduction,
+            ControllerChanged,
+            CounterAdded,
+            DamageDealt,
+            EnteredZoneThisTurn,
+            LayeredEffectCreated,
+            LayeredEffectDestroyed,
+            ManaPaid,
+            MultistepEffectStarted,
+            MultistepEffectComplete,
+            PhaseOrStepModified,
+            PlayerSelectingTargets,
+            PlayerSubmittedTargets,
+            PowerToughnessModCreated,
+            ResolutionStart,
+            ResolutionComplete,
+            RevealedCardCreated,
+            RevealedCardDeleted,
+            ShouldntPlay,
+            Shuffle,
+            SyntheticEvent,
+            TappedUntappedPermanent,
+            TokenDeleted,
+            UserActionTaken,
+        };
     }
     static class Key
     {
@@ -263,9 +310,11 @@ namespace MayhemFamiliar
         public const string Mill = "Mill";
         public const string PlayLand = "PlayLand";
         public const string Sacrifice = "Sacrifice";
+        public const string Surveil = "Surveil";
         public const string Resolve = "Resolve";
         public const string Put = "Put";
         public const string Return = "Return";
+        public const string Warp = "Warp";
         // Passive
         public const string SBA_Damage = "SBA_Damage";
         public const string SBA_Deathtouch = "SBA_Deathtouch";
@@ -490,9 +539,11 @@ namespace MayhemFamiliar
             _gameStateId = (int)(message[Key.GameStateId] ?? 0);
             string greMessagetype = message[Key.Type]?.ToString() ?? "";
             Logger.Instance.Log($"{this.GetType().Name}: GREメッセージタイプ: {greMessagetype}, MsgId: {_msgId}, GameStateId: {_gameStateId}", LogLevel.Debug);
-            if (string.IsNullOrEmpty(greMessagetype) || !GreMessageType.IsKnown(greMessagetype))
+            if (string.IsNullOrEmpty(greMessagetype)) return;
+            if (GreMessageType.IgnoreType.Contains(greMessagetype))
             {
-                Logger.Instance.Log($"{this.GetType().Name}: 未知のGREメッセージタイプ: {greMessagetype}", LogLevel.Debug);
+                // 無視するメッセージタイプはログに記録して終了
+                Logger.Instance.Log($"{this.GetType().Name}: 無視するGREメッセージタイプ: {greMessagetype}", LogLevel.Debug);
                 return;
             }
             switch (message[Key.Type]?.ToString())
@@ -509,11 +560,7 @@ namespace MayhemFamiliar
                     _gameStateId = (int)message[Key.GameStateId];
                     var gameStateMessage = message[Key.GameStateMessage];
                     string gameStateType = gameStateMessage?[Key.Type]?.ToString() ?? "";
-                    if (string.IsNullOrEmpty(gameStateType) || !GameStateType.IsKnown(gameStateType))
-                    {
-                        Logger.Instance.Log($"{this.GetType().Name}: 未知のGameStateType: {gameStateType}", LogLevel.Debug);
-                        break;
-                    }
+                    if (string.IsNullOrEmpty(gameStateType)) return;
                     switch (gameStateMessage[Key.Type]?.ToString())
                     {
                         case GameStateType.Full:
@@ -523,16 +570,18 @@ namespace MayhemFamiliar
                             ProcesseGameStateTypeDiffMessage(gameStateMessage);
                             break;
                         default:
-                            // 未知のGameStateTypeはログに記録
                             Logger.Instance.Log($"{this.GetType().Name}: 未知のGameStateType: {gameStateMessage[Key.Type]?.ToString()}", LogLevel.Debug);
                             break;
                     }
+                    break;
+                default:
+                    Logger.Instance.Log($"{this.GetType().Name}: 未知のGREメッセージタイプ: {greMessagetype}", LogLevel.Debug);
                     break;
             }
         }
         private void ProcesseGameStateTypeFullMessage(JToken message)
         {
-            // GameObjectの初期化
+            // ゲーム状態の初期化
             _gameObjects.Clear();
             _turnInfo.Reset();
             _players.Clear();
@@ -619,8 +668,10 @@ namespace MayhemFamiliar
                 int[] affectedIds = annotation[Key.AffectedIds]?.ToObject<int[]>() ?? Array.Empty<int>();
                 string playerWho;
                 string annotationType = annotation[Key.Type]?[0]?.ToString() ?? "";
-                if (string.IsNullOrEmpty(annotationType))
+                if (string.IsNullOrEmpty(annotationType)) continue;
+                if (AnnotationType.Ignore.Contains(annotationType))
                 {
+                    Logger.Instance.Log($"{this.GetType().Name}: 無視するアノテーションタイプ: {annotationType}", LogLevel.Debug);
                     continue;
                 }
                 switch (annotationType)
@@ -718,19 +769,6 @@ namespace MayhemFamiliar
                             }
                             break;
                         }
-                    case AnnotationType.AbilityInstanceCreated:
-                    case AnnotationType.AbilityInstanceDeleted:
-                    case AnnotationType.ResolutionStart:
-                    case AnnotationType.ResolutionComplete:
-                    case AnnotationType.TappedUntappedPermanent:
-                    case AnnotationType.ColorProduction:
-                    case AnnotationType.ManaPaid:
-                    case AnnotationType.EnteredZoneThisTurn:
-                    case AnnotationType.UserActionTaken:
-                    case AnnotationType.PhaseOrStepModified:
-                        // 何もしない。本当はDialogueGenerator側で判断すべきだが、いったんここで見切る。
-                        Logger.Instance.Log($"{this.GetType().Name}: 無視するAnnotationType - {annotationType}", LogLevel.Debug);
-                        break;
                     default:
                         Logger.Instance.Log($"{this.GetType().Name}: 未知のアノテーションタイプ: {annotationType}", LogLevel.Debug);
                         break;
