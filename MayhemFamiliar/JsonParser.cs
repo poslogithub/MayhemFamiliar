@@ -24,7 +24,7 @@ namespace MayhemFamiliar
     {
         public const string Player = "ControllerType_Player";
     }
-    static class ZoneId
+    public static class ZoneId
     {
         public static Dictionary<int, int> Revealed = new Dictionary<int, int>()
         {
@@ -38,25 +38,33 @@ namespace MayhemFamiliar
         public const int Battlefield = 28;
         public const int Exile = 29;
         public const int Limbo = 30;
+        public const int Hand1 = 31;
+        public const int Hand2 = 35;
+        public const int Library1 = 32;
+        public const int Library2 = 36;
+        public const int Graveyard1 = 33;
+        public const int Graveyard2 = 37;
+        public const int Sideboard1 = 34;
+        public const int Sideboard2 = 38;
         public static Dictionary<int, int> Hand = new Dictionary<int, int>()
         {
-            { 1, 31 },
-            { 2, 35 }
+            { 1, Hand1 },
+            { 2, Hand2 }
         };
         public static Dictionary<int, int> Library = new Dictionary<int, int>()
         {
-            { 1, 32 },
-            { 2, 36 }
+            { 1, Library1 },
+            { 2, Library2 }
         };
         public static Dictionary<int, int> Graveyard = new Dictionary<int, int>()
         {
-            { 1, 33 },
-            { 2, 37 }
+            { 1, Graveyard1 },
+            { 2, Graveyard2 }
         };
         public static Dictionary<int, int> Sideboard = new Dictionary<int, int>()
         {
-            { 1, 34 },
-            { 2, 38 }
+            { 1, Sideboard1 },
+            { 2, Sideboard2 }
         };
         public static Dictionary<int, List<int>> PlayerZones = new Dictionary<int, List<int>>()
         {
@@ -295,8 +303,7 @@ namespace MayhemFamiliar
         public const string Player = "Unknown_Player";
         public const int PlayerId = 0;
         public const int TeamId = 0;
-        public const int OwnerSeatId = 0;
-        public const int ControllerSeatId = 0;
+        public const int SeatId = 0;
         public const int Id = 0;
     }
     public static class ZoneTransferCategory
@@ -383,8 +390,8 @@ namespace MayhemFamiliar
             string type = Unknown.Type,
             int zoneId = Unknown.ZoneId,
             string visibility = Visibility.Hidden,
-            int ownerSeatId = Unknown.OwnerSeatId,
-            int controllerSeatId = Unknown.ControllerSeatId)
+            int ownerSeatId = Unknown.SeatId,
+            int controllerSeatId = Unknown.SeatId)
         {
             GrpId = grpId;
             Name = name;
@@ -649,7 +656,7 @@ namespace MayhemFamiliar
                     MaxHandSize = (int)(player[Player.Key.MaxHandSize] ?? 7), // デフォルトの最大手札枚数は7
                     TeamId = (int)(player[Player.Key.TeamId] ?? Unknown.TeamId), 
                     TimerIds = player[Player.Key.TimerIds]?.ToObject<List<int>>() ?? new List<int>(),
-                    ControllerSeatId = (int)(player[Player.Key.ControllerSeatId] ?? Unknown.ControllerSeatId),
+                    ControllerSeatId = (int)(player[Player.Key.ControllerSeatId] ?? Unknown.SeatId),
                     ControllerType = player[Player.Key.ControllerType]?.ToString() ?? ControllerType.Player,
                     StartingLifeTotal = (int)(player[Player.Key.StartingLifeTotal] ?? 20) // デフォルトの開始ライフは20
                 };
@@ -754,18 +761,26 @@ namespace MayhemFamiliar
                             }
                             // 【改善可能】affectorIdが10未満ならプレイヤー、そうでないならGameObjectのcontrollerかownerとする。
                             // 10は仮。いずれプレイヤー数が増える可能性があるので。
-                            playerWho = affectorId < 10 ? GetPlayerWho(affectorId) :
-                                (_gameObjects[affectorId].ControllerSeatId != Unknown.ControllerSeatId ? GetPlayerWho(_gameObjects[affectorId].ControllerSeatId) :
-                                    (_gameObjects[affectorId].OwnerSeatId != Unknown.OwnerSeatId ? GetPlayerWho(_gameObjects[affectorId].OwnerSeatId) : Unknown.Player)
-                                );
                             foreach (int affectedId in affectedIds)
                             {
+                                // コントローラ > オーナー > ゾーンのアクター の順でプレイヤーを決定
+                                playerWho = affectedId < 10 ? GetPlayerWho(affectedId) :
+                                (_gameObjects[affectedId].ControllerSeatId != Unknown.SeatId ? GetPlayerWho(_gameObjects[affectedId].ControllerSeatId) :
+                                    (_gameObjects[affectedId].OwnerSeatId != Unknown.SeatId ? GetPlayerWho(_gameObjects[affectedId].OwnerSeatId) : Unknown.Player)
+                                );
+                                if (playerWho == Unknown.Player)
+                                {
+                                    int actorSeatId = GetSeatIdByZoneId(zoneSrcId, zoneDestId);
+                                    playerWho = GetPlayerWho(actorSeatId);
+                                }
+                                /*
                                 if (_gameObjects.ContainsKey(affectedId))
                                 {
                                     _gameObjects[affectedId].ZoneId = zoneDestId;
                                 }
-                                Logger.Instance.Log($"{this.GetType().Name}: {playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\"", LogLevel.Debug);
-                                EventQueue.Queue.Enqueue($"{playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\"");
+                                */
+                                Logger.Instance.Log($"{this.GetType().Name}: {playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\" {zoneSrcId} {zoneDestId}", LogLevel.Debug);
+                                EventQueue.Queue.Enqueue($"{playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\" {zoneSrcId} {zoneDestId}");
                             }
                             break;
                         }
@@ -829,12 +844,20 @@ namespace MayhemFamiliar
                             _gameObjects[oiid] = new GameObject(zoneId: (int)zone[Key.ZoneId]);
                             Logger.Instance.Log($"{this.GetType().Name}: オブジェクト新規登録 - InstanceId: {oiid}, ZoneId: {(int)zone[Key.ZoneId]}", LogLevel.Debug);
                         }
-                        else if (_gameObjects[oiid].ZoneId != (int)zone[Key.ZoneId])
+                        if (_gameObjects[oiid].ZoneId != (int)zone[Key.ZoneId])
                         {
-                            // 既存のオブジェクトのゾーンが異なる場合は更新
+                            // オブジェクトのゾーンが異なる場合は更新
                             Logger.Instance.Log($"{this.GetType().Name}: オブジェクトゾーン更新 - InstanceId: {oiid}, OldZoneId: {_gameObjects[oiid].ZoneId}, NewZoneId: {(int)zone[Key.ZoneId]}, {_gameObjects[oiid].GetDescription()}", LogLevel.Debug);
                             _gameObjects[oiid].ZoneId = (int)zone[Key.ZoneId];
                         }
+                        // ゾーンに合わせてownerSeatIdを変更
+                        int seatId = GetSeatIdByZoneId(_gameObjects[oiid].ZoneId);
+                        if (seatId != Unknown.SeatId && _gameObjects[oiid].OwnerSeatId != seatId && _gameObjects[oiid].OwnerSeatId == Unknown.SeatId)
+                        {
+                            Logger.Instance.Log($"{this.GetType().Name}: オブジェクトオーナー更新 - InstanceId: {oiid}, OldOwnerSeatId: {_gameObjects[oiid].OwnerSeatId}, NewOwnerSeatId: {seatId}, {_gameObjects[oiid].GetDescription()}", LogLevel.Debug);
+                            _gameObjects[oiid].OwnerSeatId = seatId;
+                        }
+                        _gameObjects[oiid].OwnerSeatId = (int)(zone[Key.OwnerSeatId] ?? _gameObjects[oiid].OwnerSeatId);
                     }
                 }
             }
@@ -906,5 +929,17 @@ namespace MayhemFamiliar
                 return PlayerWho.Unknown;
             }
         }
+        private static int GetSeatIdByZoneId(int fromZoneId, int toZoneId = Unknown.ZoneId)
+        {
+            foreach (var player in ZoneId.PlayerZones)
+            {
+                if (player.Value.Contains(fromZoneId) || player.Value.Contains(toZoneId))
+                {
+                    return player.Key;
+                }
+            }
+            return Unknown.SeatId;
+        }
+
     }
 }
