@@ -940,6 +940,5 @@ namespace MayhemFamiliar
             }
             return Unknown.SeatId;
         }
-
     }
 }

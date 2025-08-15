@@ -49,7 +49,6 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}");
             }
 
-
             string jsonBuilder = "";
             string line;
             try

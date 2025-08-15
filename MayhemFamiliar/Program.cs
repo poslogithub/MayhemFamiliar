@@ -11,11 +11,14 @@ namespace MayhemFamiliar
         /// <summary>
         /// アプリケーションのメイン エントリ ポイントです。
         /// </summary>
+        public static Config _config;
+        
         [STAThread]
         static void Main(string[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            _config = Config.Load();
             Application.Run(new MainForm(args));
         }
     }
