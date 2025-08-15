@@ -13,25 +13,10 @@ namespace MayhemFamiliar
         private static readonly string[] IgnoreVerbs = {
             ZoneTransferCategory.Mill,
             ZoneTransferCategory.Nil,
-            // ZoneTransferCategory.Put,
             ZoneTransferCategory.Resolve,
             ZoneTransferCategory.Surveil,
         };
-        private static readonly string[] ActiveVerbs = {
-            ZoneTransferCategory.CastSpell,
-            ZoneTransferCategory.Conjure,
-            ZoneTransferCategory.Discard,
-            ZoneTransferCategory.Draw,
-            ZoneTransferCategory.Exile,
-            ZoneTransferCategory.Mill,
-            ZoneTransferCategory.PlayLand,
-            ZoneTransferCategory.Put,
-            ZoneTransferCategory.Sacrifice,
-            ZoneTransferCategory.Resolve,
-            ZoneTransferCategory.Return,
-            ZoneTransferCategory.Warp,
-            AnnotationType.TokenCreated,
-        };
+
         public async Task Start(CancellationToken cancellationToken)
         {
             try
@@ -98,8 +83,7 @@ namespace MayhemFamiliar
             }
             if (!string.IsNullOrEmpty(dialogue))
             {
-                Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
-                DialogueQueue.Queue.Enqueue(dialogue);
+                EnqueueDialogue(subject, dialogue);
                 return;
             }
 
@@ -134,7 +118,7 @@ namespace MayhemFamiliar
                             dialogue = "こちらのターン。";
                             break;
                         case PlayerWho.Opponent:
-                            dialogue = "お相手のターン。";
+                            dialogue = Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird ? "お相手のターン。" : "こちらのターン。";
                             break;
                         default:
                             Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤーのターン", LogLevel.Debug);
@@ -146,9 +130,10 @@ namespace MayhemFamiliar
                     switch (subject)
                     {
                         case PlayerWho.You:
+                            dialogue = "";
                             break;
                         case PlayerWho.Opponent:
-                            dialogue = "お相手が";
+                            dialogue = Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird ? "お相手が" : "";
                             break;
                         default:
                             dialogue = "不明なプレイヤーが";
@@ -160,8 +145,7 @@ namespace MayhemFamiliar
             }
             if (!string.IsNullOrEmpty(dialogue))
             {
-                Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
-                DialogueQueue.Queue.Enqueue(dialogue);
+                EnqueueDialogue(subject, dialogue);
                 return;
             }
 
@@ -201,11 +185,24 @@ namespace MayhemFamiliar
                         case PlayerWho.Opponent:
                             if (lifeDiff < 0)
                             {
-                                dialogue = $"{Math.Abs(lifeDiff)}点与えて、お相手のライフは{lifeTotal}。";
+                                if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird)
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点与えて、お相手のライフは{lifeTotal}。";
+                                } else
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点受けて、ライフは{lifeTotal}。";
+                                }
                             }
                             else
                             {
-                                dialogue = $"{Math.Abs(lifeDiff)}点回復されて、お相手のライフは{lifeTotal}。";
+                                if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird)
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点回復されて、お相手のライフは{lifeTotal}。";
+                                }
+                                else
+                                {
+                                    dialogue = $"{Math.Abs(lifeDiff)}点回復して、ライフは{lifeTotal}。";
+                                }
                             }
                             break;
                         default:
@@ -217,8 +214,7 @@ namespace MayhemFamiliar
             }
             if (!string.IsNullOrEmpty(dialogue))
             {
-                Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
-                DialogueQueue.Queue.Enqueue(dialogue);
+                EnqueueDialogue(subject, dialogue);
                 return;
             }
 
@@ -243,9 +239,10 @@ namespace MayhemFamiliar
             switch (subject)
             {
                 case PlayerWho.You:
+                    dialogue = "";
                     break;
                 case PlayerWho.Opponent:
-                    dialogue = "お相手";
+                    dialogue = Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird ? "お相手" : "";
                     break;
                 default:
                     dialogue = "不明なプレイヤー";
@@ -256,40 +253,41 @@ namespace MayhemFamiliar
             {
                 // 特定のverbの場合は、移動先ゾーンに依らず決め打ちで実況
                 case ZoneTransferCategory.CastSpell:
-                    dialogue += subject == PlayerWho.You ? "" : "が";
+                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                     dialogue += $"{objectName}をキャスト。";
                     break;
                 case ZoneTransferCategory.Conjure:
-                    dialogue += subject == PlayerWho.You ? "" : "が";
+                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                     dialogue += $"{objectName}を創出。";
                     break;
                 case ZoneTransferCategory.Discard:
-                    dialogue += subject == PlayerWho.You ? "" : "が";
+                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                     dialogue += $"{objectName}をディスカード。";
                     break;
                 case ZoneTransferCategory.Draw:
                     if (subject != PlayerWho.You && objectName == Unknown.Name)
                     {
-                        dialogue += $"がドロー。";
+                        dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
+                        dialogue += $"ドロー。";
                     }
                     else
                     {
-                        dialogue += subject == PlayerWho.You ? "" : "が";
+                        dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                         dialogue += $"{objectName}をドロー。";
                     }
                     break;
                 case ZoneTransferCategory.PlayLand:
-                    dialogue += subject == PlayerWho.You ? "" : "が";
+                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                     dialogue += $"{objectName}をプレイ。";
                     break;
                 case ZoneTransferCategory.Sacrifice:
-                    dialogue += subject == PlayerWho.You ? "" : "が";
+                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                     dialogue += $"{objectName}を生け贄に。";
                     break;
                 // 破壊や死亡は置換される可能性があるため、ここでは扱わない。
                 // ここからはキーワード能力
                 case ZoneTransferCategory.Warp:
-                    dialogue += subject == PlayerWho.You ? "" : "の";
+                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
                     dialogue += $"{objectName}がワープ。";
                     break;
                 default:
@@ -297,25 +295,25 @@ namespace MayhemFamiliar
                     switch (zoneDestId)
                     {
                         case ZoneId.Command:
-                            dialogue += subject == PlayerWho.You ? "" : "が";
+                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                             dialogue += $"{objectName}を統率領域に。";
                             break;
                         case ZoneId.Stack:
-                            dialogue += subject == PlayerWho.You ? "" : "が";
+                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                             dialogue += $"{objectName}をキャスト。";
                             break;
                         case ZoneId.Battlefield:
-                            dialogue += subject == PlayerWho.You ? "" : "の";
+                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
                             dialogue += $"{objectName}が戦場に。";
                             break;
                         case ZoneId.Exile:
-                            dialogue += subject == PlayerWho.You ? "" : "の";
+                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
                             dialogue += $"{objectName}が追放。";
                             // 発見や続唱による追放の実況はしたくない
                             break;
                         case ZoneId.Hand1:
                         case ZoneId.Hand2:
-                            dialogue += subject == PlayerWho.You ? "" : "が";
+                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                             if (subject != PlayerWho.You && objectName == Unknown.Name)
                             {
                                 objectName = "カード";
@@ -324,7 +322,7 @@ namespace MayhemFamiliar
                             break;
                         case ZoneId.Library1:
                         case ZoneId.Library2:
-                            dialogue += subject == PlayerWho.You ? "" : "が";
+                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                             if (subject != PlayerWho.You && objectName == Unknown.Name)
                             {
                                 objectName = "カード";
@@ -338,23 +336,23 @@ namespace MayhemFamiliar
                             switch (verb)
                             {
                                 case ZoneTransferCategory.Destroy:
-                                    dialogue += subject == PlayerWho.You ? "" : "の";
+                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
                                     dialogue += $"{objectName}が破壊。";
                                     break;
                                 case ZoneTransferCategory.SBA_UnattachedAura:
-                                    dialogue += subject == PlayerWho.You ? "" : "の";
+                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
                                     dialogue += $"{objectName}が墓地に。";
                                     break;
                                 case ZoneTransferCategory.SBA_Damage:
                                 case ZoneTransferCategory.SBA_Deathtouch:
                                 case ZoneTransferCategory.SBA_ZeroLoyalty:
                                 case ZoneTransferCategory.SBA_ZeroToughness:
-                                    dialogue += subject == PlayerWho.You ? "" : "の";
+                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
                                     dialogue += $"{objectName}が死亡。";
                                     break;
                                 case ZoneTransferCategory.Put:
                                 case ZoneTransferCategory.Surveil:
-                                    dialogue += subject == PlayerWho.You ? "" : "が";
+                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
                                     dialogue += $"{objectName}を墓地に。";
                                     break;
                                 case ZoneTransferCategory.Mill:
@@ -364,7 +362,7 @@ namespace MayhemFamiliar
                                     Logger.Instance.Log($"{this.GetType().Name}: 実況しないアクション: {eventString}", LogLevel.Debug);
                                     break;
                                 default:
-                                    dialogue += subject == PlayerWho.You ? "" : "の";
+                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
                                     dialogue += $"{objectName}が墓地に。";
                                     break;
                             }
@@ -381,8 +379,7 @@ namespace MayhemFamiliar
                     }
                     break;
             }
-            Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
-            DialogueQueue.Queue.Enqueue(dialogue);
+            EnqueueDialogue(subject, dialogue);
         }
         private string[] SplitEventString(string eventString)
         {
@@ -426,6 +423,17 @@ namespace MayhemFamiliar
 
             return result.ToArray();
         }
+        private string RemoveObjectiveDelimiters(string objective)
+        {
+            // 目的語のデリミタを削除
+            return objective.Replace("\"", "");
+        }
+        private void EnqueueDialogue(string playerWho, string dialogue)
+        {
+            Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
+            DialogueQueue.Queue.Enqueue($"{playerWho} {dialogue}");
+        }
+        /*
         private string ReplaceObjectiveDelimiters(string objective)
         {
             if (CultureInfo.CurrentUICulture.Name == "ja-JP")
@@ -445,11 +453,6 @@ namespace MayhemFamiliar
             }
             return objective;
         }
-        private string RemoveObjectiveDelimiters(string objective)
-        {
-            // 目的語のデリミタを削除
-            return objective.Replace("\"", "");
-        }
-
+        */
     }
 }

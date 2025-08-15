@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Speech.Synthesis;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
@@ -14,10 +15,11 @@ namespace MayhemFamiliar
 {
     internal class Speaker
     {
-        private ISynthesizer _synthesizer;
-        public Speaker(ISynthesizer synthesizer)
+        private Dictionary<string, ISynthesizer> _synthesizers = new Dictionary<string, ISynthesizer>();
+        public Speaker(ISynthesizer synthesizerYou, ISynthesizer synthesizerOpponent)
         {
-            _synthesizer = synthesizer;
+            _synthesizers[PlayerWho.You] = synthesizerYou;
+            _synthesizers[PlayerWho.Opponent] = synthesizerOpponent;
         }
         public async Task Start(CancellationToken cancellationToken)
         {
@@ -28,7 +30,30 @@ namespace MayhemFamiliar
                 {
                     if (DialogueQueue.Queue.TryDequeue(out string dialogue))
                     {
-                        _synthesizer.ProcessDialogue(dialogue);
+                        if (dialogue.StartsWith(PlayerWho.You))
+                        {
+                            if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.You] == Config.Speaker.SpeakModeOff)
+                            {
+                                Logger.Instance.Log($"{this.GetType().Name}: {PlayerWho.You} の発話モードがオフのため、スキップ: {dialogue}");
+                                continue;
+                            }
+                            dialogue = Regex.Replace(dialogue, $"^{PlayerWho.You} ", "");
+                            _synthesizers[PlayerWho.You].ProcessDialogue(dialogue);
+                        }
+                        else if (dialogue.StartsWith(PlayerWho.Opponent))
+                        {
+                            if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeOff)
+                            {
+                                Logger.Instance.Log($"{this.GetType().Name}: {PlayerWho.Opponent} の発話モードがオフのため、スキップ: {dialogue}");
+                                continue;
+                            }
+                            dialogue = Regex.Replace(dialogue, $"^{PlayerWho.Opponent} ", "");
+                            _synthesizers[PlayerWho.Opponent].ProcessDialogue(dialogue);
+                        }
+                        else
+                        {
+                            Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤー: {dialogue}");
+                        }
                     }
                     else
                     {
@@ -47,26 +72,26 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: エラー発生: {ex.Message}");
             }
         }
-        public List<IVoice> GetVoices()
+        public List<IVoice> GetVoices(string playerWho)
         {
-            return _synthesizer.GetVoices();
+            return _synthesizers[playerWho].GetVoices();
         }
-        public void SetVoice(string voiceName)
+        public void SetVoice(string playerWho, string voiceName)
         {
-            _synthesizer.SetVoice(voiceName);
+            _synthesizers[playerWho].SetVoice(voiceName);
         }
-        public void Speech(string dialogue)
+        public void Speech(string playerWho, string dialogue)
         {
-            _synthesizer.ProcessDialogue(dialogue);
+            _synthesizers[playerWho].ProcessDialogue(dialogue);
         }
-        public void InitializeSpeaker()
+        public void InitializeSpeaker(string playerWho)
         {
-            _synthesizer.InitializeSpeaker();
+            _synthesizers[playerWho].InitializeSpeaker();
         }
-        public void SetSynthesizer(ISynthesizer synthesizer)
+        public void SetSynthesizer(string playerWho, ISynthesizer synthesizer)
         {
-            _synthesizer = synthesizer;
-            Logger.Instance.Log($"{this.GetType().Name}: 音声合成器を設定: {synthesizer.GetType().Name}");
+            _synthesizers[playerWho] = synthesizer;
+            Logger.Instance.Log($"{this.GetType().Name}: {playerWho} の音声合成器を設定: {synthesizer.GetType().Name}");
         }
     }
 
@@ -279,7 +304,7 @@ namespace MayhemFamiliar
         }
         public string GetImplementation()
         {
-            return SpeakerConfig.VOICEVOX;
+            return Config.Speaker.VOICEVOX;
         }
     }
 
@@ -305,7 +330,7 @@ namespace MayhemFamiliar
         }
         public string GetImplementation()
         {
-            return SpeakerConfig.SpeechAPI;
+            return Config.Speaker.SpeechAPI;
         }
     }
 }

@@ -12,7 +12,6 @@ namespace MayhemFamiliar
 {
     public partial class MainForm : Form
     {
-        private const string MtgaProcessName = "MTGA";
         // LogWatcher用
         private const string DetailedLogEnabled = "DETAILED LOGS: ENABLED";
         private string _mtgaLogFilePath;
@@ -20,7 +19,6 @@ namespace MayhemFamiliar
         private const string CardDatabaseFileNamePattern = @"Raw_CardDatabase_.*\.mtga";
         private string _cardDatabaseFilePath;
 
-        private Config _config;
         private LogWatcher _logWatcer;
         private JsonParser _jsonParser;
         private DialogueGenerator _dialogueGenerator;
@@ -34,57 +32,144 @@ namespace MayhemFamiliar
             InitializeComponent();
             this.Shown += Form_Shown;
             this.FormClosing += Form_FormClosing;
-            listBoxVoices.SelectedIndexChanged += (s, e) =>
+            listBoxYourVoices.SelectedIndexChanged += (s, e) =>
             {
-                if (listBoxVoices.SelectedItem is ListBoxItem selectedItem)
+                if (listBoxYourVoices.SelectedItem is ListBoxItem selectedItem && _speaker != null)
                 {
-                    _speaker?.SetVoice(selectedItem.Value.ToString());
-                    _config.Speaker.Key = selectedItem.Value.ToString();
+                    _speaker.SetVoice(PlayerWho.You, selectedItem.Value.ToString());
+                    _speaker.InitializeSpeaker(PlayerWho.You);
+                    Program._config.SpeakerSettings.YourVoiceKey = selectedItem.Value.ToString();
                 }
             };
-            buttonTestSpeech.Click += ButtonTestSpeech_Click;
+            listBoxOpponentsVoices.SelectedIndexChanged += (s, e) =>
+            {
+                if (listBoxOpponentsVoices.SelectedItem is ListBoxItem selectedItem && _speaker != null)
+                {
+                    _speaker.SetVoice(PlayerWho.Opponent, selectedItem.Value.ToString());
+                    _speaker.InitializeSpeaker(PlayerWho.Opponent);
+                    Program._config.SpeakerSettings.OpponentsVoiceKey = selectedItem.Value.ToString();
+                }
+            };
 
-            // シンセサイザー変更
-            radioButtonSAPI.CheckedChanged += (s, e) =>
-            {
-                if (radioButtonSAPI.Checked && _speaker != null)
-                {
-                    try
-                    {
-                        _speaker.SetSynthesizer(new SpeechAPI());
-                        _config.Speaker.synthesizerName = SpeakerConfig.SpeechAPI;
-                        UpdateVoices();
-                        listBoxVoices.SelectedIndex = 0;
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Instance.Log($"{this.GetType().Name}: {ex}");
-                    }
-                }
-            };
-            radioButtonVoicevox.CheckedChanged += (s, e) =>
-            {
-                if (radioButtonVoicevox.Checked && _speaker != null)
-                {
-                    try
-                    {
-                        _speaker.SetSynthesizer(new Voicevox());
-                        _config.Speaker.synthesizerName = SpeakerConfig.VOICEVOX;
-                        UpdateVoices();
-                        listBoxVoices.SelectedIndex = 0;
-                        _speaker.InitializeSpeaker();
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Instance.Log($"{this.GetType().Name}: {ex}");
-                    }
-                }
-            };
+            buttonYourTestSpeech.Click += ButtonYourTestSpeech_Click;
+            buttonOpponentsTestSpeech.Click += ButtonOpponentsTestSpeech_Click;
+
+            // 実況モードのツールチップ設定
+            ToolTip toolTipSpeakMode = new ToolTip();
+            toolTipSpeakMode.SetToolTip(radioButtonYourSpeakModeOn, "「大釜の使い魔をキャスト。」");
+            toolTipSpeakMode.SetToolTip(radioButtonOpponentsSpeakModeOn, "「波乱の悪魔をキャスト。」");
+            toolTipSpeakMode.SetToolTip(radioButtonOpponentsSpeakModeThird, "「お相手が波乱の悪魔をキャスト。」");
+
+            // 実況モード変更のイベントハンドラを設定
+            radioButtonYourSpeakModeOn.CheckedChanged += ChangeYourSpeakMode;
+            radioButtonYourSpeakModeOff.CheckedChanged += ChangeYourSpeakMode;
+            radioButtonOpponentsSpeakModeOn.CheckedChanged += ChangeOpponentsSpeakMode;
+            radioButtonOpponentsSpeakModeThird.CheckedChanged += ChangeOpponentsSpeakMode;
+            radioButtonOpponentsSpeakModeOff.CheckedChanged += ChangeOpponentsSpeakMode;
+
+            // シンセサイザー変更のイベントハンドラを設定
+            radioButtonYourSAPI.CheckedChanged += ChangeYourSynthesizer;
+            radioButtonYourVoicevox.CheckedChanged += ChangeYourSynthesizer;
+            radioButtonOpponentsSAPI.CheckedChanged += ChangeOpponentsSynthesizer;
+            radioButtonOpponentsVoicevox.CheckedChanged += ChangeOpponentsSynthesizer;
         }
 
-        private void ButtonTestSpeech_Click(object sender, EventArgs e)
+        private void ChangeYourSpeakMode(object sender, EventArgs e)
         {
-            _speaker.Speech("対戦よろしくお願いします。");
+            if (radioButtonYourSpeakModeOn.Checked)
+            {
+                Program._config.SpeakerSettings.SpeakModes[PlayerWho.You] = Config.Speaker.SpeakModeOn;
+            }
+            else if (radioButtonYourSpeakModeOff.Checked)
+            {
+                Program._config.SpeakerSettings.SpeakModes[PlayerWho.You] = Config.Speaker.SpeakModeOff;
+            }
+            else
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: 不明な実況モード: {Program._config.SpeakerSettings.SpeakModes[PlayerWho.You]}", LogLevel.Error);
+            }
+        }
+        private void ChangeOpponentsSpeakMode(object sender, EventArgs e)
+        {
+            if (radioButtonOpponentsSpeakModeOn.Checked)
+            {
+                Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] = Config.Speaker.SpeakModeOn;
+            }
+            else if (radioButtonOpponentsSpeakModeThird.Checked)
+            {
+                Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] = Config.Speaker.SpeakModeThird;
+            }
+            else if (radioButtonOpponentsSpeakModeOff.Checked)
+            {
+                Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] = Config.Speaker.SpeakModeOff;
+            }
+            else
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: 不明な実況モード: {Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent]}", LogLevel.Error);
+            }
+        }
+        private void ChangeYourSynthesizer(object sender, EventArgs e)
+        {
+            if (_speaker == null)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: Speakerが初期化されていません。");
+                return;
+            }
+            try
+            {
+                if (radioButtonYourSAPI.Checked)
+                {
+                    _speaker.SetSynthesizer(PlayerWho.You, new SpeechAPI());
+                    Program._config.SpeakerSettings.YourSynthesizerName = Config.Speaker.SpeechAPI;
+                }
+                if (radioButtonYourVoicevox.Checked)
+                {
+                    _speaker.SetSynthesizer(PlayerWho.You, new Voicevox());
+                    Program._config.SpeakerSettings.YourSynthesizerName = Config.Speaker.VOICEVOX;
+                }
+                UpdateVoices(PlayerWho.You);
+                listBoxYourVoices.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: {ex}");
+            }
+        }
+        private void ChangeOpponentsSynthesizer(object sender, EventArgs e)
+        {
+            if (_speaker == null)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: Speakerが初期化されていません。");
+                return;
+            }
+            try
+            {
+                if (radioButtonOpponentsSAPI.Checked)
+                {
+                    _speaker.SetSynthesizer(PlayerWho.Opponent, new SpeechAPI());
+                    Program._config.SpeakerSettings.OpponentsSynthesizerName = Config.Speaker.SpeechAPI;
+                }
+                if (radioButtonOpponentsVoicevox.Checked)
+                {
+                    _speaker.SetSynthesizer(PlayerWho.Opponent, new Voicevox());
+                    Program._config.SpeakerSettings.OpponentsSynthesizerName = Config.Speaker.VOICEVOX;
+                }
+                UpdateVoices(PlayerWho.Opponent);
+                 listBoxOpponentsVoices.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: {ex}");
+            }
+        }
+
+        private void ButtonYourTestSpeech_Click(object sender, EventArgs e)
+        {
+            _speaker.Speech(PlayerWho.You, "テスト");
+        }
+        private void ButtonOpponentsTestSpeech_Click(object sender, EventArgs e)
+        {
+            _speaker.Speech(PlayerWho.Opponent, "テスト");
         }
 
         private async void Form_Shown(object sender, EventArgs e)
@@ -107,11 +192,12 @@ namespace MayhemFamiliar
             }
             
             // コンフィグ読み込み
-            _config = Config.Load();
+            Program._config = Config.Load();
 
             // MTG Arena起動確認
             Logger.Instance.Log($"{this.GetType().Name}: MTG Arena起動確認");
-            while (!Util.IsProcessRunning(_config.Mtga?.ProcessName ?? MtgaProcessName))
+            string mtgaProcessName = Program._config.MtgArenaSettings?.ProcessName ?? DefaultValue.MtgaProcessName;
+            while (!Util.IsProcessRunning(mtgaProcessName))
             {
                 Boolean ignore = false;
                 Logger.Instance.Log($"{this.GetType().Name}: MTG Arenaが起動していません。", LogLevel.Error);
@@ -136,6 +222,7 @@ namespace MayhemFamiliar
                 }
                 if (ignore) break;
             }
+            Program._config.MtgArenaSettings.ProcessName = mtgaProcessName;
 
             // ログファイル存在確認
             _mtgaLogFilePath = GetInitMtgaLogFilePath();
@@ -159,7 +246,7 @@ namespace MayhemFamiliar
                 }
             }
             Logger.Instance.Log($"{this.GetType().Name}: ログファイル: {_mtgaLogFilePath}");
-            _config.Mtga.LogDirectoryPath = Path.GetDirectoryName(_mtgaLogFilePath);
+            Program._config.MtgArenaSettings.LogDirectoryPath = Path.GetDirectoryName(_mtgaLogFilePath);
 
             // 詳細ログ有効確認
             if (CheckDetailedLog())
@@ -200,7 +287,36 @@ namespace MayhemFamiliar
                 }
             }
             Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル: {_cardDatabaseFilePath}");
-            _config.Mtga.CardDatabaseDirectoryPath = Path.GetDirectoryName(_cardDatabaseFilePath);
+            Program._config.MtgArenaSettings.CardDatabaseDirectoryPath = Path.GetDirectoryName(_cardDatabaseFilePath);
+
+            // TODO: ここで実況モードの初期設定
+            switch (Program._config.SpeakerSettings?.SpeakModes[PlayerWho.You])
+            {
+                case Config.Speaker.SpeakModeOn:
+                    radioButtonYourSpeakModeOn.Checked = true;
+                    break;
+                case Config.Speaker.SpeakModeOff:
+                    radioButtonYourSpeakModeOff.Checked = true;
+                    break;
+                default:
+                    Logger.Instance.Log($"{this.GetType().Name}: 不明な実況モード: {Program._config.SpeakerSettings?.SpeakModes[PlayerWho.You]}", LogLevel.Error);
+                    break;
+            }
+            switch (Program._config.SpeakerSettings?.SpeakModes[PlayerWho.Opponent])
+            {
+                case Config.Speaker.SpeakModeOn:
+                    radioButtonOpponentsSpeakModeOn.Checked = true;
+                    break;
+                case Config.Speaker.SpeakModeThird:
+                    radioButtonOpponentsSpeakModeThird.Checked = true;
+                    break;
+                case Config.Speaker.SpeakModeOff:
+                    radioButtonOpponentsSpeakModeOff.Checked = true;
+                    break;
+                default:
+                    Logger.Instance.Log($"{this.GetType().Name}: 不明な実況モード: {Program._config.SpeakerSettings?.SpeakModes[PlayerWho.Opponent]}", LogLevel.Error);
+                    break;
+            }
 
             // LogWacher起動
             _logWatcer = new LogWatcher(_mtgaLogFilePath);
@@ -217,46 +333,76 @@ namespace MayhemFamiliar
             _ctsDialogueGenerator = new CancellationTokenSource();
             Task.Run(() => _dialogueGenerator.Start(_ctsDialogueGenerator.Token));
 
-            // 初期Speaker決定
-            string synthesizerName = _config.Speaker?.synthesizerName ?? DefaultValue.synthesizerName;
-            string key = _config.Speaker?.Key ?? "";
+            // 自分の初期Speaker決定
+            string synthesizerName = Program._config.SpeakerSettings?.YourSynthesizerName ?? DefaultValue.synthesizerName;
+            string yourVoiceKey = Program._config.SpeakerSettings?.YourVoiceKey ?? "";
+            ISynthesizer yourSynthesizer;
             switch (synthesizerName)
             {
-                case SpeakerConfig.VOICEVOX:
-                    radioButtonVoicevox.Checked = true;
-                    _speaker = new Speaker(new Voicevox());
+                case Config.Speaker.VOICEVOX:
+                    radioButtonYourVoicevox.Checked = true;
+                    yourSynthesizer = new Voicevox();
                     break;
                 default:
-                    radioButtonSAPI.Checked = true;
-                    _speaker = new Speaker(new SpeechAPI());
+                    radioButtonYourSAPI.Checked = true;
+                    yourSynthesizer = new SpeechAPI();
                     break;
             }
-            UpdateVoices();
-            if (!string.IsNullOrEmpty(key))
+
+            // 対戦相手の初期Speaker決定
+            synthesizerName = Program._config.SpeakerSettings?.OpponentsSynthesizerName ?? DefaultValue.synthesizerName;
+            string opponentsVoiceKey = Program._config.SpeakerSettings?.OpponentsVoiceKey ?? "";
+            ISynthesizer opponentsSynthesizer;
+            switch (synthesizerName)
             {
-                listBoxVoices.SelectedItem = listBoxVoices.Items.Cast<ListBoxItem>().FirstOrDefault(item => item.Value.ToString() == key);
+                case Config.Speaker.VOICEVOX:
+                    radioButtonOpponentsVoicevox.Checked = true;
+                    opponentsSynthesizer = new Voicevox();
+                    break;
+                default:
+                    radioButtonOpponentsSAPI.Checked = true;
+                    opponentsSynthesizer = new SpeechAPI();
+                    break;
             }
-            else
-            {
-                // デフォルトの音声を選択
-                listBoxVoices.SelectedIndex = 0;
-            }
+            _speaker = new Speaker(yourSynthesizer, opponentsSynthesizer);
+
             _ctsSpeaker = new CancellationTokenSource();
             Task.Run(() => _speaker.Start(_ctsSpeaker.Token));
-            _config.Speaker.synthesizerName = synthesizerName;
-            var selectedItem = listBoxVoices.SelectedItem as ListBoxItem;
+
+            // 話者一覧を表示
+            UpdateVoices(PlayerWho.You);
+            if (!string.IsNullOrEmpty(yourVoiceKey))
+            {
+                // TODO: ここでConfigの話者を読み込む
+                listBoxYourVoices.SelectedItem = listBoxYourVoices.Items.Cast<ListBoxItem>().FirstOrDefault(item => item.Value.ToString() == yourVoiceKey);
+            }
+            UpdateVoices(PlayerWho.Opponent);
+            if (!string.IsNullOrEmpty(opponentsVoiceKey))
+            {
+                // TODO: ここでConfigの話者を読み込む
+                listBoxOpponentsVoices.SelectedItem = listBoxOpponentsVoices.Items.Cast<ListBoxItem>().FirstOrDefault(item => item.Value.ToString() == opponentsVoiceKey);
+            }
+            // 自分の話者を設定
+            Program._config.SpeakerSettings.YourSynthesizerName = synthesizerName;
+            var selectedItem = listBoxYourVoices.SelectedItem as ListBoxItem;
             if (selectedItem != null)
             {
-                _speaker?.SetVoice(selectedItem.Value.ToString());
-                _config.Speaker.Key = selectedItem.Value.ToString();
+                _speaker?.SetVoice(PlayerWho.You, selectedItem.Value.ToString());
+                Program._config.SpeakerSettings.YourVoiceKey = selectedItem.Value.ToString();
             }
-
-            // 話者タブの初期化
+            // 対戦相手の話者を設定
+            Program._config.SpeakerSettings.OpponentsSynthesizerName = synthesizerName;
+            selectedItem = listBoxOpponentsVoices.SelectedItem as ListBoxItem;
+            if (selectedItem != null)
+            {
+                _speaker?.SetVoice(PlayerWho.Opponent, selectedItem.Value.ToString());
+                Program._config.SpeakerSettings.OpponentsVoiceKey = selectedItem.Value.ToString();
+            }
         }
 
         private void Form_FormClosing(object sender, FormClosingEventArgs e)
         {
-            _config.Save();
+            Program._config.Save();
             _ctsLogWatcher?.Cancel();
             _ctsLogWatcher?.Dispose();
         }
@@ -289,7 +435,7 @@ namespace MayhemFamiliar
 
         private string GetInitMtgaLogFilePath()
         {
-            return Path.Combine(_config.Mtga?.LogDirectoryPath ?? DefaultValue.MtgaLogDirectory, DefaultValue.MtgaLogFileName);
+            return Path.Combine(Program._config.MtgArenaSettings?.LogDirectoryPath ?? DefaultValue.MtgaLogDirectory, DefaultValue.MtgaLogFileName);
         }
         private string GetMtgaLogFilePath()
         {
@@ -362,7 +508,7 @@ namespace MayhemFamiliar
 
         private string GetInitCardDatabaseFilePath()
         {
-            var cardDatabaseDirectoryPath = _config.Mtga?.CardDatabaseDirectoryPath;
+            var cardDatabaseDirectoryPath = Program._config.MtgArenaSettings?.CardDatabaseDirectoryPath;
             var largestCardDatabaseFilePath = GetLargestCardDatabaseFilePath(cardDatabaseDirectoryPath);
             if (!string.IsNullOrEmpty(largestCardDatabaseFilePath) && File.Exists(largestCardDatabaseFilePath))
             {
@@ -370,6 +516,7 @@ namespace MayhemFamiliar
             }
             return Path.Combine(DefaultValue.CardDatabaseDirectory, GetLargestCardDatabaseFilePath(DefaultValue.CardDatabaseDirectory));
         }
+
         private string GetLargestCardDatabaseFilePath(string cardDatabaseDirectoryPath)
         {
             // ディレクトリ内のファイルを検索し、正規表現にマッチするもののうち、サイズが最大のものを取得
@@ -423,13 +570,29 @@ namespace MayhemFamiliar
             return Path.GetFullPath(cardDatabaseFile);
         }
 
-        private void UpdateVoices()
+        private void UpdateVoices(string playerWho)
         {
-            listBoxVoices.Items.Clear();
-            List<IVoice> voices = _speaker.GetVoices();
-            foreach (var voice in voices)
+            switch (playerWho)
             {
-                listBoxVoices.Items.Add(new ListBoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
+                case PlayerWho.You:
+                    listBoxYourVoices.Items.Clear();
+                    List<IVoice> yourVoices = _speaker?.GetVoices(PlayerWho.You) ?? new List<IVoice>();
+                    foreach (var voice in yourVoices)
+                    {
+                        listBoxYourVoices.Items.Add(new ListBoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
+                    }
+                    break;
+                case PlayerWho.Opponent:
+                    listBoxOpponentsVoices.Items.Clear();
+                    List<IVoice> opponentsVoices = _speaker?.GetVoices(PlayerWho.Opponent) ?? new List<IVoice>();
+                    foreach (var voice in opponentsVoices)
+                    {
+                        listBoxOpponentsVoices.Items.Add(new ListBoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
+                    }
+                    break;
+                default:
+                    Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤー: {playerWho}", LogLevel.Error);
+                    break;
             }
         }
 
