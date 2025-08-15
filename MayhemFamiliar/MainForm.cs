@@ -51,7 +51,8 @@ namespace MayhemFamiliar
                 }
             };
 
-            buttonTestSpeech.Click += ButtonTestSpeech_Click;
+            buttonYourTestSpeech.Click += ButtonYourTestSpeech_Click;
+            buttonOpponentsTestSpeech.Click += ButtonOpponentsTestSpeech_Click;
 
             // 実況モードのツールチップ設定
             ToolTip toolTipSpeakMode = new ToolTip();
@@ -162,9 +163,13 @@ namespace MayhemFamiliar
             }
         }
 
-        private void ButtonTestSpeech_Click(object sender, EventArgs e)
+        private void ButtonYourTestSpeech_Click(object sender, EventArgs e)
         {
-            _speaker.Speech(PlayerWho.You, "対戦よろしくお願いします。");
+            _speaker.Speech(PlayerWho.You, "テスト");
+        }
+        private void ButtonOpponentsTestSpeech_Click(object sender, EventArgs e)
+        {
+            _speaker.Speech(PlayerWho.Opponent, "テスト");
         }
 
         private async void Form_Shown(object sender, EventArgs e)

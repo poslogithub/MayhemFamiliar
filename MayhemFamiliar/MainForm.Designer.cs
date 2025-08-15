@@ -40,13 +40,14 @@
             this.radioButtonYourSpeakModeOff = new System.Windows.Forms.RadioButton();
             this.radioButtonYourSpeakModeOn = new System.Windows.Forms.RadioButton();
             this.groupBoxOpponentsSynthesizer = new System.Windows.Forms.GroupBox();
+            this.buttonOpponentsTestSpeech = new System.Windows.Forms.Button();
             this.radioButtonOpponentsVoicevox = new System.Windows.Forms.RadioButton();
             this.radioButtonOpponentsSAPI = new System.Windows.Forms.RadioButton();
-            this.buttonTestSpeech = new System.Windows.Forms.Button();
             this.listBoxYourVoices = new System.Windows.Forms.ListBox();
             this.groupBoxYourSynthesizer = new System.Windows.Forms.GroupBox();
             this.radioButtonYourSAPI = new System.Windows.Forms.RadioButton();
             this.radioButtonYourVoicevox = new System.Windows.Forms.RadioButton();
+            this.buttonYourTestSpeech = new System.Windows.Forms.Button();
             this.tabPageLog = new System.Windows.Forms.TabPage();
             this.textBoxLog = new System.Windows.Forms.TextBox();
             this.tabControl1.SuspendLayout();
@@ -75,7 +76,6 @@
             this.tabPageSpeaker.Controls.Add(this.groupBoxOpponentsSpeakMode);
             this.tabPageSpeaker.Controls.Add(this.groupBoxYourSpeakMode);
             this.tabPageSpeaker.Controls.Add(this.groupBoxOpponentsSynthesizer);
-            this.tabPageSpeaker.Controls.Add(this.buttonTestSpeech);
             this.tabPageSpeaker.Controls.Add(this.listBoxYourVoices);
             this.tabPageSpeaker.Controls.Add(this.groupBoxYourSynthesizer);
             this.tabPageSpeaker.Location = new System.Drawing.Point(4, 22);
@@ -90,9 +90,9 @@
             // 
             this.listBoxOpponentsVoices.FormattingEnabled = true;
             this.listBoxOpponentsVoices.ItemHeight = 12;
-            this.listBoxOpponentsVoices.Location = new System.Drawing.Point(209, 220);
+            this.listBoxOpponentsVoices.Location = new System.Drawing.Point(399, 220);
             this.listBoxOpponentsVoices.Name = "listBoxOpponentsVoices";
-            this.listBoxOpponentsVoices.Size = new System.Drawing.Size(197, 196);
+            this.listBoxOpponentsVoices.Size = new System.Drawing.Size(390, 196);
             this.listBoxOpponentsVoices.TabIndex = 10;
             // 
             // groupBoxOpponentsSpeakMode
@@ -100,9 +100,9 @@
             this.groupBoxOpponentsSpeakMode.Controls.Add(this.radioButtonOpponentsSpeakModeOff);
             this.groupBoxOpponentsSpeakMode.Controls.Add(this.radioButtonOpponentsSpeakModeThird);
             this.groupBoxOpponentsSpeakMode.Controls.Add(this.radioButtonOpponentsSpeakModeOn);
-            this.groupBoxOpponentsSpeakMode.Location = new System.Drawing.Point(209, 6);
+            this.groupBoxOpponentsSpeakMode.Location = new System.Drawing.Point(399, 6);
             this.groupBoxOpponentsSpeakMode.Name = "groupBoxOpponentsSpeakMode";
-            this.groupBoxOpponentsSpeakMode.Size = new System.Drawing.Size(200, 100);
+            this.groupBoxOpponentsSpeakMode.Size = new System.Drawing.Size(390, 100);
             this.groupBoxOpponentsSpeakMode.TabIndex = 5;
             this.groupBoxOpponentsSpeakMode.TabStop = false;
             this.groupBoxOpponentsSpeakMode.Text = "対戦相手のアクション";
@@ -146,7 +146,7 @@
             this.groupBoxYourSpeakMode.Controls.Add(this.radioButtonYourSpeakModeOn);
             this.groupBoxYourSpeakMode.Location = new System.Drawing.Point(3, 6);
             this.groupBoxYourSpeakMode.Name = "groupBoxYourSpeakMode";
-            this.groupBoxYourSpeakMode.Size = new System.Drawing.Size(200, 100);
+            this.groupBoxYourSpeakMode.Size = new System.Drawing.Size(390, 100);
             this.groupBoxYourSpeakMode.TabIndex = 4;
             this.groupBoxYourSpeakMode.TabStop = false;
             this.groupBoxYourSpeakMode.Text = "自分のアクション";
@@ -175,14 +175,24 @@
             // 
             // groupBoxOpponentsSynthesizer
             // 
+            this.groupBoxOpponentsSynthesizer.Controls.Add(this.buttonOpponentsTestSpeech);
             this.groupBoxOpponentsSynthesizer.Controls.Add(this.radioButtonOpponentsVoicevox);
             this.groupBoxOpponentsSynthesizer.Controls.Add(this.radioButtonOpponentsSAPI);
-            this.groupBoxOpponentsSynthesizer.Location = new System.Drawing.Point(209, 112);
+            this.groupBoxOpponentsSynthesizer.Location = new System.Drawing.Point(399, 112);
             this.groupBoxOpponentsSynthesizer.Name = "groupBoxOpponentsSynthesizer";
-            this.groupBoxOpponentsSynthesizer.Size = new System.Drawing.Size(200, 100);
+            this.groupBoxOpponentsSynthesizer.Size = new System.Drawing.Size(390, 100);
             this.groupBoxOpponentsSynthesizer.TabIndex = 9;
             this.groupBoxOpponentsSynthesizer.TabStop = false;
             this.groupBoxOpponentsSynthesizer.Text = "対戦相手の音声合成ソフト";
+            // 
+            // buttonOpponentsTestSpeech
+            // 
+            this.buttonOpponentsTestSpeech.Location = new System.Drawing.Point(275, 14);
+            this.buttonOpponentsTestSpeech.Name = "buttonOpponentsTestSpeech";
+            this.buttonOpponentsTestSpeech.Size = new System.Drawing.Size(112, 24);
+            this.buttonOpponentsTestSpeech.TabIndex = 11;
+            this.buttonOpponentsTestSpeech.Text = "テスト発声";
+            this.buttonOpponentsTestSpeech.UseVisualStyleBackColor = true;
             // 
             // radioButtonOpponentsVoicevox
             // 
@@ -206,31 +216,23 @@
             this.radioButtonOpponentsSAPI.Text = "Speech API";
             this.radioButtonOpponentsSAPI.UseVisualStyleBackColor = true;
             // 
-            // buttonTestSpeech
-            // 
-            this.buttonTestSpeech.Location = new System.Drawing.Point(671, 4);
-            this.buttonTestSpeech.Name = "buttonTestSpeech";
-            this.buttonTestSpeech.Size = new System.Drawing.Size(112, 24);
-            this.buttonTestSpeech.TabIndex = 2;
-            this.buttonTestSpeech.Text = "テスト発声";
-            this.buttonTestSpeech.UseVisualStyleBackColor = true;
-            // 
             // listBoxYourVoices
             // 
             this.listBoxYourVoices.FormattingEnabled = true;
             this.listBoxYourVoices.ItemHeight = 12;
-            this.listBoxYourVoices.Location = new System.Drawing.Point(6, 220);
+            this.listBoxYourVoices.Location = new System.Drawing.Point(3, 220);
             this.listBoxYourVoices.Name = "listBoxYourVoices";
-            this.listBoxYourVoices.Size = new System.Drawing.Size(197, 196);
+            this.listBoxYourVoices.Size = new System.Drawing.Size(390, 196);
             this.listBoxYourVoices.TabIndex = 1;
             // 
             // groupBoxYourSynthesizer
             // 
             this.groupBoxYourSynthesizer.Controls.Add(this.radioButtonYourSAPI);
             this.groupBoxYourSynthesizer.Controls.Add(this.radioButtonYourVoicevox);
+            this.groupBoxYourSynthesizer.Controls.Add(this.buttonYourTestSpeech);
             this.groupBoxYourSynthesizer.Location = new System.Drawing.Point(3, 112);
             this.groupBoxYourSynthesizer.Name = "groupBoxYourSynthesizer";
-            this.groupBoxYourSynthesizer.Size = new System.Drawing.Size(200, 100);
+            this.groupBoxYourSynthesizer.Size = new System.Drawing.Size(390, 100);
             this.groupBoxYourSynthesizer.TabIndex = 6;
             this.groupBoxYourSynthesizer.TabStop = false;
             this.groupBoxYourSynthesizer.Text = "自分の音声合成ソフト";
@@ -256,6 +258,15 @@
             this.radioButtonYourVoicevox.TabStop = true;
             this.radioButtonYourVoicevox.Text = "VOICEVOX";
             this.radioButtonYourVoicevox.UseVisualStyleBackColor = true;
+            // 
+            // buttonYourTestSpeech
+            // 
+            this.buttonYourTestSpeech.Location = new System.Drawing.Point(272, 14);
+            this.buttonYourTestSpeech.Name = "buttonYourTestSpeech";
+            this.buttonYourTestSpeech.Size = new System.Drawing.Size(112, 24);
+            this.buttonYourTestSpeech.TabIndex = 2;
+            this.buttonYourTestSpeech.Text = "テスト発声";
+            this.buttonYourTestSpeech.UseVisualStyleBackColor = true;
             // 
             // tabPageLog
             // 
@@ -312,7 +323,7 @@
         private System.Windows.Forms.TextBox textBoxLog;
         private System.Windows.Forms.RadioButton radioButtonYourSAPI;
         private System.Windows.Forms.ListBox listBoxYourVoices;
-        private System.Windows.Forms.Button buttonTestSpeech;
+        private System.Windows.Forms.Button buttonYourTestSpeech;
         private System.Windows.Forms.RadioButton radioButtonYourVoicevox;
         private System.Windows.Forms.GroupBox groupBoxYourSpeakMode;
         private System.Windows.Forms.GroupBox groupBoxOpponentsSpeakMode;
@@ -326,6 +337,7 @@
         private System.Windows.Forms.GroupBox groupBoxOpponentsSynthesizer;
         private System.Windows.Forms.GroupBox groupBoxYourSynthesizer;
         private System.Windows.Forms.ListBox listBoxOpponentsVoices;
+        private System.Windows.Forms.Button buttonOpponentsTestSpeech;
     }
 }
 
