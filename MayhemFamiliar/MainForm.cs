@@ -48,6 +48,7 @@ namespace MayhemFamiliar
             {
                 _comboBoxSynthesizers[playerWho].Items.Add(Config.Speaker.WindowsSpeechAPI);
                 _comboBoxSynthesizers[playerWho].Items.Add(Config.Speaker.VOICEVOX);
+                _comboBoxSynthesizers[playerWho].Items.Add(Config.Speaker.AssistantSeika);
                 _comboBoxSynthesizers[playerWho].SelectedIndex = 0; // デフォルトで最初のアイテムを選択
                 _comboBoxSynthesizers[playerWho].SelectedIndexChanged += (s, e) =>
                 {
@@ -58,12 +59,16 @@ namespace MayhemFamiliar
                         switch (selectedSynthesizer)
                         {
                             case Config.Speaker.WindowsSpeechAPI:
-                                _speaker.SetSynthesizer(playerWho, new SpeechAPI());
+                                _speaker.SetSynthesizer(playerWho, new WindowsSpeechAPI());
                                 Program._config.SpeakerSettings.SynthesizerNames[playerWho] = Config.Speaker.WindowsSpeechAPI;
                                 break;
                             case Config.Speaker.VOICEVOX:
                                 _speaker.SetSynthesizer(playerWho, new Voicevox());
                                 Program._config.SpeakerSettings.SynthesizerNames[playerWho] = Config.Speaker.VOICEVOX;
+                                break;
+                            case Config.Speaker.AssistantSeika:
+                                _speaker.SetSynthesizer(playerWho, new AssistantSeika());
+                                Program._config.SpeakerSettings.SynthesizerNames[playerWho] = Config.Speaker.AssistantSeika;
                                 break;
                             default:
                                 Logger.Instance.Log($"{this.GetType().Name}: 不明なシンセサイザー: {selectedSynthesizer}", LogLevel.Error);
@@ -113,14 +118,6 @@ namespace MayhemFamiliar
             radioButtonOpponentsSpeakModeOn.CheckedChanged += ChangeOpponentsSpeakMode;
             radioButtonOpponentsSpeakModeThird.CheckedChanged += ChangeOpponentsSpeakMode;
             radioButtonOpponentsSpeakModeOff.CheckedChanged += ChangeOpponentsSpeakMode;
-
-            /*
-            // シンセサイザー変更のイベントハンドラを設定
-            radioButtonYourSAPI.CheckedChanged += ChangeYourSynthesizer;
-            radioButtonYourVoicevox.CheckedChanged += ChangeYourSynthesizer;
-            radioButtonOpponentsSAPI.CheckedChanged += ChangeOpponentsSynthesizer;
-            radioButtonOpponentsVoicevox.CheckedChanged += ChangeOpponentsSynthesizer;
-            */
         }
 
 
@@ -329,8 +326,11 @@ namespace MayhemFamiliar
                     case Config.Speaker.VOICEVOX:
                         synthesizers[playerWho] = new Voicevox();
                         break;
+                    case Config.Speaker.AssistantSeika:
+                        synthesizers[playerWho] = new AssistantSeika();
+                        break;
                     default:
-                        synthesizers[playerWho] = new SpeechAPI();
+                        synthesizers[playerWho] = new WindowsSpeechAPI();
                         break;
                 }
             }

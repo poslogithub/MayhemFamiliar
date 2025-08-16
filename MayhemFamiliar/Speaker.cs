@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -241,10 +242,96 @@ namespace MayhemFamiliar
         }
 
     }
-    internal class SpeechAPI : ISynthesizer
+
+    internal class AssistantSeika : ISynthesizer
+    {
+        private string SeikaSay2ExePath = Path.Combine(
+            ".", 
+            Program._config.SpeakerSettings?.SeikaSay2Exe ?? DefaultValue.SeikaSay2Exe
+        );
+        private string _cid = "";
+        public void ProcessDialogue(string dialogue)
+        {
+            if (string.IsNullOrEmpty(_cid))
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: 話者が設定されていません", LogLevel.Error);
+                return;
+            }
+            Process process = new Process();
+            process.StartInfo.FileName = SeikaSay2ExePath;
+            process.StartInfo.Arguments = $"-cid {_cid} -t {dialogue}";
+            process.StartInfo.UseShellExecute = false; // シェルを介さず直接実行
+            process.StartInfo.CreateNoWindow = true; // ウィンドウを表示しない
+            try
+            {
+                process.Start();
+                Logger.Instance.Log($"{this.GetType().Name}: 発話: {dialogue}");
+                process.WaitForExit(); // プロセスの終了を待機
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: {process.StartInfo.FileName} {process.StartInfo.Arguments} 実行時に例外が発生");
+                Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}");
+            }
+
+        }
+        public List<IVoice> GetVoices()
+        {
+            Logger.Instance.Log($"{this.GetType().Name}: 音声一覧を取得");
+            Process process = new Process();
+            process.StartInfo.FileName = SeikaSay2ExePath;
+            process.StartInfo.Arguments = $"-list";
+            process.StartInfo.UseShellExecute = false; // シェルを介さず直接実行
+            process.StartInfo.RedirectStandardOutput = true; // 標準出力をリダイレクト
+            process.StartInfo.RedirectStandardError = true; // エラー出力もリダイレクト（必要に応じて）
+            process.StartInfo.CreateNoWindow = true; // ウィンドウを表示しない
+            try
+            {
+                process.Start();
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: {process.StartInfo.FileName} {process.StartInfo.Arguments} 実行時に例外が発生");
+                Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}");
+            }
+
+            List<string> cids = new List<string>();
+            List<string> speakers = new List<string>();
+            var voices = new List<IVoice>();
+            try
+            {
+                StreamReader reader = process.StandardOutput;
+                string line = reader.ReadLine();
+                while (line != null)
+                {
+                    line = line.Trim();
+                    if (Regex.IsMatch(line, "^[0-9]"))
+                    {
+                        voices.Add(new AssistantSeikaVoice(line.Split(' ')[0], line));
+                    }
+                    line = reader.ReadLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: {process.StartInfo.FileName} の標準出力読み込みで例外が発生");
+                Logger.Instance.Log($"{this.GetType().Name}: {process.StartInfo.ToString()}");
+                Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}");
+            }
+            return voices;
+        }
+        public void SetVoice(string cid)
+        {
+            Logger.Instance.Log($"{this.GetType().Name}: 話者設定: {cid}");
+            _cid = cid;
+        }
+        public void InitializeSpeaker() { }
+    }
+
+    internal class WindowsSpeechAPI : ISynthesizer
     {
         private SpeechSynthesizer _synthesizer;
-        public SpeechAPI()
+        public WindowsSpeechAPI()
         {
             _synthesizer = new SpeechSynthesizer();
         }
@@ -257,9 +344,9 @@ namespace MayhemFamiliar
         {
             Logger.Instance.Log($"{this.GetType().Name}: 音声一覧を取得");
             var voices = new List<IVoice>();
-            foreach (var voice in _synthesizer.GetInstalledVoices(CultureInfo.CurrentCulture))
+            foreach (InstalledVoice voice in _synthesizer.GetInstalledVoices(CultureInfo.CurrentCulture))
             {
-                voices.Add(new SpeechAPIVoice(voice.VoiceInfo.Name, voice.VoiceInfo.Description));
+                voices.Add(new WindowsSpeechAPIVoice(voice.VoiceInfo.Name, voice.VoiceInfo.Description));
             }
             return voices;
         }
@@ -273,10 +360,6 @@ namespace MayhemFamiliar
 
     internal interface IVoice
     {
-        string Name { get; set; }
-        string Description { get; set; }
-        string StyleName { get; set; }
-        int StyleID { get; set; }
         string GetKey();
         string GetLabel();
         string GetImplementation();
@@ -285,7 +368,6 @@ namespace MayhemFamiliar
     internal class VoicevoxVoice : IVoice
     {
         public string Name { get; set; }
-        public string Description { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public string StyleName { get; set; }
         public int StyleID { get; set; }
         public VoicevoxVoice(string name, string styleName, int styleId)
@@ -308,14 +390,35 @@ namespace MayhemFamiliar
         }
     }
 
-    internal class SpeechAPIVoice : IVoice
+    internal class AssistantSeikaVoice : IVoice
+    {
+        public string CID { get; set; }
+        public string Speaker { get; set; }
+        public AssistantSeikaVoice(string cid, string speaker)
+        {
+            CID = cid;
+            Speaker = speaker;
+        }
+        public string GetKey()
+        {
+            return CID;
+        }
+        public string GetLabel()
+        {
+            return Speaker;
+        }
+        public string GetImplementation()
+        {
+            return Config.Speaker.AssistantSeika;
+        }
+    }
+
+    internal class WindowsSpeechAPIVoice : IVoice
     {
         public string Name { get; set; }
         public string Description { get; set; }
-        public string StyleName { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public int StyleID { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-        public SpeechAPIVoice(string name, string description)
+        public WindowsSpeechAPIVoice(string name, string description)
         {
             Name = name;
             Description = description;
