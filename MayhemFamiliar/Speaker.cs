@@ -80,7 +80,7 @@ namespace MayhemFamiliar
         {
             _synthesizers[playerWho].SetVoice(voiceName);
         }
-        public void Speech(string playerWho, string dialogue)
+        public void Speak(string playerWho, string dialogue)
         {
             _synthesizers[playerWho].ProcessDialogue(dialogue);
         }
@@ -330,7 +330,7 @@ namespace MayhemFamiliar
         }
         public string GetImplementation()
         {
-            return Config.Speaker.SpeechAPI;
+            return Config.Speaker.WindowsSpeechAPI;
         }
     }
 }

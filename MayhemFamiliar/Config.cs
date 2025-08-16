@@ -8,7 +8,7 @@ using System.Windows.Forms;
 
 namespace MayhemFamiliar
 {
-    public sealed class Config
+    internal sealed class Config
     {
         private static readonly string ConfigFileName = $"{Application.ProductName}.config.json";
         public static Config Load()
@@ -40,28 +40,45 @@ namespace MayhemFamiliar
 
         public class MtgArena
         {
-            public string ProcessName { get; set; }
-            public string LogDirectoryPath { get; set; }
-            public string CardDatabaseDirectoryPath { get; set; }
+            public string ProcessName { get; set; } = "MTGA";
+            public string LogFileName { get; set; } = "Player.log";
+            public string LogDirectoryPath { get; set; } = 
+                Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "AppData", "LocalLow", "Wizards Of The Coast", "MTGA"
+            );
+            public string CardDatabaseDirectoryPath { get; set; } = 
+                Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "Wizards of the Coast", "MTGA", "MTGA_Data", "Downloads", "Raw"
+            );
         }
         public MtgArena MtgArenaSettings { get; set; } = new MtgArena();
         
         public class Speaker
         {
-            public const string SpeechAPI = "SpeechAPI";
+            public const string WindowsSpeechAPI = "Windows Speech API";
             public const string VOICEVOX = "VOICEVOX";
+            public const string AssistantSeika = "AssistantSeika";
             public const string SpeakModeOn = "on";
             public const string SpeakModeOff = "off";
             public const string SpeakModeThird = "third";
+            public const string DefaultSynthesizerName = WindowsSpeechAPI;
             public Dictionary<string, string> SpeakModes { get; set; } = new Dictionary<string, string>
             {
                 { PlayerWho.You, SpeakModeOn },
                 { PlayerWho.Opponent, SpeakModeOn },
             };
-            public string YourSynthesizerName { get; set; }
-            public string OpponentsSynthesizerName { get; set; }
-            public string YourVoiceKey { get; set; }
-            public string OpponentsVoiceKey { get; set; }
+            public Dictionary<string, string> SynthesizerNames { get; set; } = new Dictionary<string, string>
+            {
+                { PlayerWho.You, WindowsSpeechAPI },
+                { PlayerWho.Opponent, WindowsSpeechAPI },
+            };
+            public Dictionary<string, string> VoiceKeys { get; set; } = new Dictionary<string, string>()
+            {
+                { PlayerWho.You, "" },
+                { PlayerWho.Opponent, "" },
+            };
         }
         public Speaker SpeakerSettings { get; set; } = new Speaker();
     }

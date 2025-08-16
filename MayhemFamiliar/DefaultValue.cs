@@ -7,7 +7,6 @@ namespace MayhemFamiliar
     {
         public const string MtgaLogFileName = "Player.log";
         public const string MtgaProcessName = "MTGA";
-        public static readonly string synthesizerName = Config.Speaker.SpeechAPI;
         public static string MtgaLogDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "AppData", "LocalLow", "Wizards Of The Coast", "MTGA"

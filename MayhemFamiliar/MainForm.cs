@@ -7,11 +7,15 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-
 namespace MayhemFamiliar
 {
     public partial class MainForm : Form
     {
+        // UI用
+        private Dictionary<string, ComboBox> _comboBoxSynthesizers = new Dictionary<string, ComboBox>();
+        private Dictionary<string, Button> _buttonTestSpeaks = new Dictionary<string, Button>();
+        private Dictionary<string, ListBox> _listBoxVoices = new Dictionary<string, ListBox>();
+
         // LogWatcher用
         private const string DetailedLogEnabled = "DETAILED LOGS: ENABLED";
         private string _mtgaLogFilePath;
@@ -28,37 +32,80 @@ namespace MayhemFamiliar
 
         public MainForm(string[] args)
         {
-            _readFullLog = args.Any(arg => arg == "-f");
             InitializeComponent();
-            this.Shown += Form_Shown;
-            this.FormClosing += Form_FormClosing;
-            listBoxYourVoices.SelectedIndexChanged += (s, e) =>
-            {
-                if (listBoxYourVoices.SelectedItem is ListBoxItem selectedItem && _speaker != null)
-                {
-                    _speaker.SetVoice(PlayerWho.You, selectedItem.Value.ToString());
-                    _speaker.InitializeSpeaker(PlayerWho.You);
-                    Program._config.SpeakerSettings.YourVoiceKey = selectedItem.Value.ToString();
-                }
-            };
-            listBoxOpponentsVoices.SelectedIndexChanged += (s, e) =>
-            {
-                if (listBoxOpponentsVoices.SelectedItem is ListBoxItem selectedItem && _speaker != null)
-                {
-                    _speaker.SetVoice(PlayerWho.Opponent, selectedItem.Value.ToString());
-                    _speaker.InitializeSpeaker(PlayerWho.Opponent);
-                    Program._config.SpeakerSettings.OpponentsVoiceKey = selectedItem.Value.ToString();
-                }
-            };
 
-            buttonYourTestSpeech.Click += ButtonYourTestSpeech_Click;
-            buttonOpponentsTestSpeech.Click += ButtonOpponentsTestSpeech_Click;
+            // 引数の処理
+            _readFullLog = args.Any(arg => arg == "-f");
+
+            _comboBoxSynthesizers[PlayerWho.You] = comboBoxYourSynthesizer;
+            _comboBoxSynthesizers[PlayerWho.Opponent] = comboBoxOpponentSynthesizer;
+            _listBoxVoices[PlayerWho.You] = listBoxYourVoices;
+            _listBoxVoices[PlayerWho.Opponent] = listBoxOpponentsVoices;
+            _buttonTestSpeaks[PlayerWho.You] = buttonYourTestSpeak;
+            _buttonTestSpeaks[PlayerWho.Opponent] = buttonOpponentsTestSpeak;
+
+            foreach (var playerWho in new string[] {PlayerWho.You, PlayerWho.Opponent})
+            {
+                _comboBoxSynthesizers[playerWho].Items.Add(Config.Speaker.WindowsSpeechAPI);
+                _comboBoxSynthesizers[playerWho].Items.Add(Config.Speaker.VOICEVOX);
+                _comboBoxSynthesizers[playerWho].SelectedIndex = 0; // デフォルトで最初のアイテムを選択
+                _comboBoxSynthesizers[playerWho].SelectedIndexChanged += (s, e) =>
+                {
+                    if (_speaker == null) return;
+                    try
+                    {
+                        string selectedSynthesizer = _comboBoxSynthesizers[playerWho].SelectedItem.ToString();
+                        switch (selectedSynthesizer)
+                        {
+                            case Config.Speaker.WindowsSpeechAPI:
+                                _speaker.SetSynthesizer(playerWho, new SpeechAPI());
+                                Program._config.SpeakerSettings.SynthesizerNames[playerWho] = Config.Speaker.WindowsSpeechAPI;
+                                break;
+                            case Config.Speaker.VOICEVOX:
+                                _speaker.SetSynthesizer(playerWho, new Voicevox());
+                                Program._config.SpeakerSettings.SynthesizerNames[playerWho] = Config.Speaker.VOICEVOX;
+                                break;
+                            default:
+                                Logger.Instance.Log($"{this.GetType().Name}: 不明なシンセサイザー: {selectedSynthesizer}", LogLevel.Error);
+                                return;
+                        }
+                        UpdateVoices(playerWho);
+                        _listBoxVoices[playerWho].SelectedIndex = 0; // デフォルトで最初のアイテムを選択
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Instance.Log($"{this.GetType().Name}: {ex}");
+                    }
+                };
+
+                _buttonTestSpeaks[playerWho].Click += (s, e) =>
+                {
+                    if (_speaker == null) return;
+                    _speaker.Speak(playerWho, "テスト");
+                };
+
+                _listBoxVoices[playerWho].SelectedIndexChanged += (s, e) =>
+                {
+                    if (_speaker == null) return;
+                    if (_listBoxVoices[playerWho].SelectedItem is BoxItem selectedItem)
+                    {
+                        _speaker.SetVoice(playerWho, selectedItem.Value.ToString());
+                        _speaker.InitializeSpeaker(playerWho);
+                        Program._config.SpeakerSettings.VoiceKeys[playerWho] = selectedItem.Value.ToString();
+                    }
+                };
+
+            }
 
             // 実況モードのツールチップ設定
             ToolTip toolTipSpeakMode = new ToolTip();
             toolTipSpeakMode.SetToolTip(radioButtonYourSpeakModeOn, "「大釜の使い魔をキャスト。」");
             toolTipSpeakMode.SetToolTip(radioButtonOpponentsSpeakModeOn, "「波乱の悪魔をキャスト。」");
             toolTipSpeakMode.SetToolTip(radioButtonOpponentsSpeakModeThird, "「お相手が波乱の悪魔をキャスト。」");
+
+            // イベントハンドラの設定
+            this.Shown += Form_Shown;
+            this.FormClosing += Form_FormClosing;
 
             // 実況モード変更のイベントハンドラを設定
             radioButtonYourSpeakModeOn.CheckedChanged += ChangeYourSpeakMode;
@@ -67,15 +114,20 @@ namespace MayhemFamiliar
             radioButtonOpponentsSpeakModeThird.CheckedChanged += ChangeOpponentsSpeakMode;
             radioButtonOpponentsSpeakModeOff.CheckedChanged += ChangeOpponentsSpeakMode;
 
+            /*
             // シンセサイザー変更のイベントハンドラを設定
             radioButtonYourSAPI.CheckedChanged += ChangeYourSynthesizer;
             radioButtonYourVoicevox.CheckedChanged += ChangeYourSynthesizer;
             radioButtonOpponentsSAPI.CheckedChanged += ChangeOpponentsSynthesizer;
             radioButtonOpponentsVoicevox.CheckedChanged += ChangeOpponentsSynthesizer;
+            */
         }
+
 
         private void ChangeYourSpeakMode(object sender, EventArgs e)
         {
+            RadioButton radioButton = sender as RadioButton;
+            if (radioButton == null) return;
             if (radioButtonYourSpeakModeOn.Checked)
             {
                 Program._config.SpeakerSettings.SpeakModes[PlayerWho.You] = Config.Speaker.SpeakModeOn;
@@ -84,13 +136,11 @@ namespace MayhemFamiliar
             {
                 Program._config.SpeakerSettings.SpeakModes[PlayerWho.You] = Config.Speaker.SpeakModeOff;
             }
-            else
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: 不明な実況モード: {Program._config.SpeakerSettings.SpeakModes[PlayerWho.You]}", LogLevel.Error);
-            }
         }
         private void ChangeOpponentsSpeakMode(object sender, EventArgs e)
         {
+            RadioButton radioButton = sender as RadioButton;
+            if (radioButton == null) return;
             if (radioButtonOpponentsSpeakModeOn.Checked)
             {
                 Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] = Config.Speaker.SpeakModeOn;
@@ -103,73 +153,6 @@ namespace MayhemFamiliar
             {
                 Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] = Config.Speaker.SpeakModeOff;
             }
-            else
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: 不明な実況モード: {Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent]}", LogLevel.Error);
-            }
-        }
-        private void ChangeYourSynthesizer(object sender, EventArgs e)
-        {
-            if (_speaker == null)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: Speakerが初期化されていません。");
-                return;
-            }
-            try
-            {
-                if (radioButtonYourSAPI.Checked)
-                {
-                    _speaker.SetSynthesizer(PlayerWho.You, new SpeechAPI());
-                    Program._config.SpeakerSettings.YourSynthesizerName = Config.Speaker.SpeechAPI;
-                }
-                if (radioButtonYourVoicevox.Checked)
-                {
-                    _speaker.SetSynthesizer(PlayerWho.You, new Voicevox());
-                    Program._config.SpeakerSettings.YourSynthesizerName = Config.Speaker.VOICEVOX;
-                }
-                UpdateVoices(PlayerWho.You);
-                listBoxYourVoices.SelectedIndex = 0;
-            }
-            catch (Exception ex)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: {ex}");
-            }
-        }
-        private void ChangeOpponentsSynthesizer(object sender, EventArgs e)
-        {
-            if (_speaker == null)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: Speakerが初期化されていません。");
-                return;
-            }
-            try
-            {
-                if (radioButtonOpponentsSAPI.Checked)
-                {
-                    _speaker.SetSynthesizer(PlayerWho.Opponent, new SpeechAPI());
-                    Program._config.SpeakerSettings.OpponentsSynthesizerName = Config.Speaker.SpeechAPI;
-                }
-                if (radioButtonOpponentsVoicevox.Checked)
-                {
-                    _speaker.SetSynthesizer(PlayerWho.Opponent, new Voicevox());
-                    Program._config.SpeakerSettings.OpponentsSynthesizerName = Config.Speaker.VOICEVOX;
-                }
-                UpdateVoices(PlayerWho.Opponent);
-                 listBoxOpponentsVoices.SelectedIndex = 0;
-            }
-            catch (Exception ex)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: {ex}");
-            }
-        }
-
-        private void ButtonYourTestSpeech_Click(object sender, EventArgs e)
-        {
-            _speaker.Speech(PlayerWho.You, "テスト");
-        }
-        private void ButtonOpponentsTestSpeech_Click(object sender, EventArgs e)
-        {
-            _speaker.Speech(PlayerWho.Opponent, "テスト");
         }
 
         private async void Form_Shown(object sender, EventArgs e)
@@ -334,69 +317,37 @@ namespace MayhemFamiliar
             Task.Run(() => _dialogueGenerator.Start(_ctsDialogueGenerator.Token));
 
             // 自分の初期Speaker決定
-            string synthesizerName = Program._config.SpeakerSettings?.YourSynthesizerName ?? DefaultValue.synthesizerName;
-            string yourVoiceKey = Program._config.SpeakerSettings?.YourVoiceKey ?? "";
-            ISynthesizer yourSynthesizer;
-            switch (synthesizerName)
+            Dictionary<string, ISynthesizer> synthesizers = new Dictionary<string, ISynthesizer>();
+            foreach (var playerWho in new string[] { PlayerWho.You, PlayerWho.Opponent })
             {
-                case Config.Speaker.VOICEVOX:
-                    radioButtonYourVoicevox.Checked = true;
-                    yourSynthesizer = new Voicevox();
-                    break;
-                default:
-                    radioButtonYourSAPI.Checked = true;
-                    yourSynthesizer = new SpeechAPI();
-                    break;
+                string synthesizerName = Program._config.SpeakerSettings?.SynthesizerNames?[playerWho] ?? Config.Speaker.DefaultSynthesizerName;
+                string voiceKey = Program._config.SpeakerSettings?.VoiceKeys?[playerWho] ?? "";
+                SelectComboBoxItemByText(_comboBoxSynthesizers[playerWho], synthesizerName);
+                // ここで_comboBoxSynthesizers[].SelectedIndexChangedが実行されて_configが更新される
+                switch (synthesizerName)
+                {
+                    case Config.Speaker.VOICEVOX:
+                        synthesizers[playerWho] = new Voicevox();
+                        break;
+                    default:
+                        synthesizers[playerWho] = new SpeechAPI();
+                        break;
+                }
             }
-
-            // 対戦相手の初期Speaker決定
-            synthesizerName = Program._config.SpeakerSettings?.OpponentsSynthesizerName ?? DefaultValue.synthesizerName;
-            string opponentsVoiceKey = Program._config.SpeakerSettings?.OpponentsVoiceKey ?? "";
-            ISynthesizer opponentsSynthesizer;
-            switch (synthesizerName)
-            {
-                case Config.Speaker.VOICEVOX:
-                    radioButtonOpponentsVoicevox.Checked = true;
-                    opponentsSynthesizer = new Voicevox();
-                    break;
-                default:
-                    radioButtonOpponentsSAPI.Checked = true;
-                    opponentsSynthesizer = new SpeechAPI();
-                    break;
-            }
-            _speaker = new Speaker(yourSynthesizer, opponentsSynthesizer);
+            _speaker = new Speaker(synthesizers[PlayerWho.You], synthesizers[PlayerWho.Opponent]);
 
             _ctsSpeaker = new CancellationTokenSource();
             Task.Run(() => _speaker.Start(_ctsSpeaker.Token));
 
-            // 話者一覧を表示
-            UpdateVoices(PlayerWho.You);
-            if (!string.IsNullOrEmpty(yourVoiceKey))
+            foreach (var playerWho in new string[] { PlayerWho.You, PlayerWho.Opponent })
             {
-                // TODO: ここでConfigの話者を読み込む
-                listBoxYourVoices.SelectedItem = listBoxYourVoices.Items.Cast<ListBoxItem>().FirstOrDefault(item => item.Value.ToString() == yourVoiceKey);
-            }
-            UpdateVoices(PlayerWho.Opponent);
-            if (!string.IsNullOrEmpty(opponentsVoiceKey))
-            {
-                // TODO: ここでConfigの話者を読み込む
-                listBoxOpponentsVoices.SelectedItem = listBoxOpponentsVoices.Items.Cast<ListBoxItem>().FirstOrDefault(item => item.Value.ToString() == opponentsVoiceKey);
-            }
-            // 自分の話者を設定
-            Program._config.SpeakerSettings.YourSynthesizerName = synthesizerName;
-            var selectedItem = listBoxYourVoices.SelectedItem as ListBoxItem;
-            if (selectedItem != null)
-            {
-                _speaker?.SetVoice(PlayerWho.You, selectedItem.Value.ToString());
-                Program._config.SpeakerSettings.YourVoiceKey = selectedItem.Value.ToString();
-            }
-            // 対戦相手の話者を設定
-            Program._config.SpeakerSettings.OpponentsSynthesizerName = synthesizerName;
-            selectedItem = listBoxOpponentsVoices.SelectedItem as ListBoxItem;
-            if (selectedItem != null)
-            {
-                _speaker?.SetVoice(PlayerWho.Opponent, selectedItem.Value.ToString());
-                Program._config.SpeakerSettings.OpponentsVoiceKey = selectedItem.Value.ToString();
+                UpdateVoices(playerWho);    // 話者一覧を更新
+                if (!string.IsNullOrEmpty(Program._config.SpeakerSettings.VoiceKeys[playerWho]))
+                {
+                    // 話者キーが設定されている場合、選択状態にする
+                    _listBoxVoices[playerWho].SelectedItem = _listBoxVoices[playerWho].Items.Cast<BoxItem>().FirstOrDefault(item => item.Value.ToString() == Program._config.SpeakerSettings.VoiceKeys[playerWho]);
+                    // ここで_comboBoxSynthesizers[].SelectedIndexChangedが実行されて_configが更新される
+                }
             }
         }
 
@@ -435,15 +386,18 @@ namespace MayhemFamiliar
 
         private string GetInitMtgaLogFilePath()
         {
-            return Path.Combine(Program._config.MtgArenaSettings?.LogDirectoryPath ?? DefaultValue.MtgaLogDirectory, DefaultValue.MtgaLogFileName);
+            return Path.Combine(
+                Program._config.MtgArenaSettings?.LogDirectoryPath ?? DefaultValue.MtgaLogDirectory, 
+                Program._config.MtgArenaSettings?.LogFileName ?? DefaultValue.MtgaLogFileName
+            );
         }
         private string GetMtgaLogFilePath()
         {
             string logDirectory;
 
-            if (Directory.Exists(DefaultValue.MtgaLogDirectory))
+            if (Directory.Exists(Program._config.MtgArenaSettings?.LogDirectoryPath ?? DefaultValue.MtgaLogDirectory))
             {
-                logDirectory = DefaultValue.MtgaLogDirectory;
+                logDirectory = Program._config.MtgArenaSettings?.LogDirectoryPath ?? DefaultValue.MtgaLogDirectory;
             }
             else
             {
@@ -454,7 +408,7 @@ namespace MayhemFamiliar
                 return "";
             }
 
-            return Path.Combine(logDirectory, DefaultValue.MtgaLogFileName);
+            return Path.Combine(logDirectory, Program._config.MtgArenaSettings?.LogFileName ?? DefaultValue.MtgaLogFileName);
         }
 
         private static string SelectDirectory()
@@ -508,13 +462,16 @@ namespace MayhemFamiliar
 
         private string GetInitCardDatabaseFilePath()
         {
-            var cardDatabaseDirectoryPath = Program._config.MtgArenaSettings?.CardDatabaseDirectoryPath;
+            string cardDatabaseDirectoryPath = Program._config.MtgArenaSettings?.CardDatabaseDirectoryPath ?? DefaultValue.CardDatabaseDirectory;
             var largestCardDatabaseFilePath = GetLargestCardDatabaseFilePath(cardDatabaseDirectoryPath);
             if (!string.IsNullOrEmpty(largestCardDatabaseFilePath) && File.Exists(largestCardDatabaseFilePath))
             {
                 return largestCardDatabaseFilePath;
             }
-            return Path.Combine(DefaultValue.CardDatabaseDirectory, GetLargestCardDatabaseFilePath(DefaultValue.CardDatabaseDirectory));
+            else
+            {
+                return "";
+            }
         }
 
         private string GetLargestCardDatabaseFilePath(string cardDatabaseDirectoryPath)
@@ -542,12 +499,8 @@ namespace MayhemFamiliar
         }
         private string GetCardDatabaseFilePath()
         {
-            string cardDatabaseDirectoryPath;
-            if (Directory.Exists(DefaultValue.CardDatabaseDirectory))
-            {
-                cardDatabaseDirectoryPath = DefaultValue.CardDatabaseDirectory;
-            }
-            else
+            string cardDatabaseDirectoryPath = Program._config.MtgArenaSettings?.CardDatabaseDirectoryPath ?? DefaultValue.CardDatabaseDirectory;
+            if (!Directory.Exists(cardDatabaseDirectoryPath))
             {
                 cardDatabaseDirectoryPath = SelectDirectory();
             }
@@ -579,7 +532,7 @@ namespace MayhemFamiliar
                     List<IVoice> yourVoices = _speaker?.GetVoices(PlayerWho.You) ?? new List<IVoice>();
                     foreach (var voice in yourVoices)
                     {
-                        listBoxYourVoices.Items.Add(new ListBoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
+                        listBoxYourVoices.Items.Add(new BoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
                     }
                     break;
                 case PlayerWho.Opponent:
@@ -587,7 +540,7 @@ namespace MayhemFamiliar
                     List<IVoice> opponentsVoices = _speaker?.GetVoices(PlayerWho.Opponent) ?? new List<IVoice>();
                     foreach (var voice in opponentsVoices)
                     {
-                        listBoxOpponentsVoices.Items.Add(new ListBoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
+                        listBoxOpponentsVoices.Items.Add(new BoxItem { Label = voice.GetLabel(), Value = voice.GetKey() });
                     }
                     break;
                 default:
@@ -596,9 +549,21 @@ namespace MayhemFamiliar
             }
         }
 
+        private void SelectComboBoxItemByText(ComboBox comboBox, string text)
+        {
+            for (int i = 0; i < comboBox.Items.Count; i++)
+            {
+                if (comboBox.Items[i].ToString() == text)
+                {
+                    comboBox.SelectedIndex = i;
+                    return;
+                }
+            }
+            comboBox.SelectedIndex = -1; // 一致なし
+        }
     }
 
-    public class ListBoxItem
+    public class BoxItem
     {
         public string Label { get; set; }
         public object Value { get; set; }
