@@ -11,7 +11,8 @@ MTG Arenaの対戦内容を実況してくれます。
 ------
 - MTGアリーナを起動
 - （初回のみ）MTGアリーナの「詳細ログ」を有効化（設定 > アカウント > 詳細ログにチェックを入れてMTG Arenaを再起動）
-- VOICEVOXを起動（音声合成エンジンとしてVOICEVOXを使用する場合のみ）
+- 音声合成製品を起動
+  - AssistantSeikaの場合、MayhemFamiliar.exeと同じフォルダに「SeikaSay2.exe」を配置してください。
 - MayhemFamiliar.exeを実行
   - ※MTGアリーナ、VOICEVOX、MayhemFamiliarの起動順は任意です
 - 「話者」タブで音声合成エンジンと話者を選択
