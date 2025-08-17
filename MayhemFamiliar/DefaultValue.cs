@@ -7,8 +7,7 @@ namespace MayhemFamiliar
     {
         public const string MtgaLogFileName = "Player.log";
         public const string MtgaProcessName = "MTGA";
-        public static readonly string synthesizerName = Config.Speaker.SpeechAPI;
-        public static string MtgaLogDirectory = Path.Combine(
+        public static readonly string MtgaLogDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "AppData", "LocalLow", "Wizards Of The Coast", "MTGA"
         );
@@ -16,5 +15,6 @@ namespace MayhemFamiliar
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             @"Wizards of the Coast\MTGA\MTGA_Data\Downloads\Raw"
         );
+        public const string SeikaSay2Exe = "SeikaSay2.exe";
     }
 }

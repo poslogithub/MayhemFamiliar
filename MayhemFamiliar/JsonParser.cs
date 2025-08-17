@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MayhemFamiliar
 {
-    static class  MatchState
+    static class MatchState
     {
         public const string Key = "matchState";
         public const string GameComplete = "MatchState_GameComplete";
