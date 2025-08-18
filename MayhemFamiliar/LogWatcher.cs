@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace MayhemFamiliar
@@ -10,6 +11,10 @@ namespace MayhemFamiliar
     internal class LogWatcher : IDisposable
     {
         private const string PowerShellExecutable = "powershell.exe";
+        private const string DraftPackStartsWith = "[UnityCrossThreadLogger]Draft.Notify ";
+        private const string DraftPackStartPattern = @"\[UnityCrossThreadLogger\]Draft\.Notify ";
+        private const string DraftPickStartsWith = "[UnityCrossThreadLogger]==> EventPlayerDraftMakePick ";
+        private const string DraftPickStartPattern = @"\[UnityCrossThreadLogger\]==> EventPlayerDraftMakePick ";
         private readonly Process _powershell = new Process();
         private readonly string _logFilePath;
 
@@ -56,16 +61,32 @@ namespace MayhemFamiliar
                 StreamReader reader = _powershell.StandardOutput;
                 while ((line = await reader.ReadLineAsync()) != null)
                 {
-                    // _log.Invoke($"{this.GetType().Name}: {line}");
+                    // ドラフト
+                    if (line.StartsWith(DraftPackStartsWith))
+                    {
+                        jsonBuilder = Regex.Replace(line, DraftPackStartPattern, "");
+                        JsonQueue.Queue.Enqueue(jsonBuilder);
+                        continue;
+                    }
+                    else if (line.StartsWith(DraftPickStartsWith))
+                    {
+                        jsonBuilder = Regex.Replace(line, DraftPickStartPattern, "");
+                        JsonQueue.Queue.Enqueue(jsonBuilder);
+                        continue;
+                    }
+
+                    // ゲームプレイ
                     if (line.StartsWith("{") && line.EndsWith("}"))
                     {
                         // 単一行JSON
                         JsonQueue.Queue.Enqueue(line);
+                        continue;
                     }
                     else if (line.StartsWith("{"))
                     {
                         // 複数行JSONの開始
                         jsonBuilder = line;
+                        continue;
                     }
                     else if (jsonBuilder != null)
                     {
@@ -77,6 +98,7 @@ namespace MayhemFamiliar
                             JsonQueue.Queue.Enqueue(jsonBuilder);
                             jsonBuilder = "";
                         }
+                        continue;
                     }
                     // それ以外の行は無視
                 }

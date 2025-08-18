@@ -2,6 +2,7 @@
 using System.Text.RegularExpressions;
 using System.Globalization;
 using System;
+using System.Collections.Generic;
 
 namespace MayhemFamiliar
 {
@@ -72,6 +73,26 @@ namespace MayhemFamiliar
             }
 
             return loc;
+        }
+
+        public int GetRarityByGrpId(int grpId)
+        {
+            string tableName = $"Cards";
+            string rarityColumnName = "Rarity";
+            string sql = $"SELECT {rarityColumnName} FROM {tableName} WHERE GrpId = {grpId}";
+            int rarity = -1;
+            using (var cmd = new SQLiteCommand(sql, _connection))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        rarity = (int)reader[rarityColumnName];
+                    }
+                }
+            }
+
+            return rarity;
         }
 
         private static string RemoveBrackets(string text)

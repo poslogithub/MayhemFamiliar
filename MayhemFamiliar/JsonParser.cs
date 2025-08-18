@@ -3,9 +3,11 @@ using MayhemFamiliar.QueueManager;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Animation;
 
 namespace MayhemFamiliar
 {
@@ -226,6 +228,19 @@ namespace MayhemFamiliar
             TokenDeleted,
             UserActionTaken,
         };
+    }
+    static class DraftKey
+    {
+        public const string draftId = "draftId";
+        public const string DraftId = "DraftId";
+        public const string SelfPick = "SelfPick";
+        public const string SelfPack = "SelfPack";
+        public const string PackCards = "PackCards";
+        public const string Request = "request";
+        public const string GrpIds = "GrpIds";
+        public const string Pack = "Pack";
+        public const string Pick = "Pick";
+        public const string PackRarity = "PackRarity";
     }
     static class Key
     {
@@ -499,6 +514,78 @@ namespace MayhemFamiliar
                 return;
             }
 
+            // ドラフト
+            if (json[DraftKey.draftId] != null)
+            {
+                // ドラフトパック
+                int pack = (int)(json[DraftKey.SelfPack] ?? -1);
+                int pick = (int)(json[DraftKey.SelfPick] ?? -1);
+                EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.Pack} {pack} {pick}");
+                string packCards = json[DraftKey.PackCards].ToString();
+                List<int> grpIds = new List<int>();
+                foreach (string card in packCards.Split(','))
+                {
+                    grpIds.Add(int.Parse(card));
+                }
+                List<string> mythicCardNames = new List<string>();
+                List<string> rareCardNames = new List<string>();
+                foreach (int grpId in grpIds)
+                {
+                    int rarity = _cardData.GetRarityByGrpId(grpId);
+                    switch (rarity)
+                    {
+                        case 5: // Mythic Rare
+                            mythicCardNames.Add(_cardData.GetCardNameByGrpId(grpId));
+                            break;
+                        case 4: // Rare
+                            rareCardNames.Add(_cardData.GetCardNameByGrpId(grpId));
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                if (mythicCardNames.Count > 0)
+                {
+                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.PackRarity} 5 {string.Join(" ", mythicCardNames)}");
+                }
+                if (rareCardNames.Count > 0)
+                {
+                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.PackRarity} 4 {string.Join(" ", rareCardNames)}");
+                }
+                return;
+            }
+            else
+            {
+                // ドラフトピック
+                string request = json[DraftKey.Request]?.ToString() ?? "";
+                if (string.IsNullOrEmpty(request)) return;
+                JObject requestObject;
+                try { 
+                    requestObject = JObject.Parse(request);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Instance.Log($"{this.GetType().Name}: JSON文字列のパース中に例外が発生", LogLevel.Error);
+                    Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}", LogLevel.Error);
+                    return;
+                }
+                if (requestObject[DraftKey.DraftId] is null ||
+                    requestObject[DraftKey.GrpIds] is null  ||
+                    requestObject[DraftKey.Pack] is null ||
+                    requestObject[DraftKey.Pick] is null) return;
+
+                int[] grpIds = requestObject[DraftKey.GrpIds].ToObject<int[]>();
+                List<string> cardNames = new List<string>();
+                foreach (int grpId in grpIds)
+                {
+                    string cardName = _cardData.GetCardNameByGrpId(grpId);
+                    cardNames.Add(cardName);
+                }
+                EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.Pick} {string.Join(" ", cardNames)}");
+            }
+
+
+            // プレイ
             // TransactionIdが無いメッセージは全て無視
             if (json?[Key.TransactionId] is null)
             {

@@ -95,6 +95,9 @@ namespace MayhemFamiliar
             }
             switch (verb)
             {
+                case DraftKey.Pick:
+                    dialogue = $"{string.Join(" ", tokens.Skip(2))}をピック。";
+                    break;
                 case AnnotationType.NewTurnStarted:
                     int turnNumber;
                     try
@@ -149,7 +152,7 @@ namespace MayhemFamiliar
                 return;
             }
 
-            // トークン数 = 4（ライフ増減）
+            // トークン数 = 4
             if (tokens.Length < 4)
             {
                 Logger.Instance.Log($"{this.GetType().Name}: {verb} イベントのトークン数が4未満: {eventString}", LogLevel.Error);
@@ -157,7 +160,38 @@ namespace MayhemFamiliar
             }
             switch (verb)
             {
-                case AnnotationType.ModifiedLife:
+                case DraftKey.Pack:
+                    int packNum = int.Parse(tokens[2]);
+                    int pickNum = int.Parse(tokens[3]);
+                    if (packNum < 1 || pickNum < 1)
+                    {
+                        Logger.Instance.Log($"{this.GetType().Name}: パック番号またはピック番号が不正: {eventString}", LogLevel.Error);
+                        return;
+                    }
+                    if (pickNum == 1)
+                    {
+                        dialogue = $"{packNum}パック目。";
+                    }
+                    else
+                    {
+                        dialogue = $"{packNum}の{pickNum}。";
+                    }
+                    break;
+                case DraftKey.PackRarity:
+                    int rarityNum = int.Parse(tokens[2]);
+                    switch (rarityNum)
+                    {
+                        case 5: // 神話レア
+                            dialogue = $"神話レアは、{string.Join(" ", tokens.Skip(3))}。";
+                            break;
+                        case 4: // レア
+                            dialogue = $"レアは、{string.Join(" ", tokens.Skip(3))}。";
+                            break;
+                        default:
+                            return;
+                    }
+                    break;
+                case AnnotationType.ModifiedLife:   // ライフ増減
                     int lifeDiff, lifeTotal;
                     try
                     {
