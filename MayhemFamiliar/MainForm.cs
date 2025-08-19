@@ -118,6 +118,16 @@ namespace MayhemFamiliar
             radioButtonOpponentsSpeakModeOn.CheckedChanged += ChangeOpponentsSpeakMode;
             radioButtonOpponentsSpeakModeThird.CheckedChanged += ChangeOpponentsSpeakMode;
             radioButtonOpponentsSpeakModeOff.CheckedChanged += ChangeOpponentsSpeakMode;
+
+            // ドラフト、シールド実況のイベントハンドラを設定
+            checkBoxDraft.CheckedChanged += (s, e) =>
+            {
+                Program._config.SpeakerSettings.SpeakDraftPick = checkBoxDraft.Checked;
+            };
+            checkBoxSealed.CheckedChanged += (s, e) =>
+            {
+                Program._config.SpeakerSettings.SpeakSealedOpen = checkBoxSealed.Checked;
+            };
         }
 
 
@@ -269,7 +279,7 @@ namespace MayhemFamiliar
             Logger.Instance.Log($"{this.GetType().Name}: カードデータベースファイル: {_cardDatabaseFilePath}");
             Program._config.MtgArenaSettings.CardDatabaseDirectoryPath = Path.GetDirectoryName(_cardDatabaseFilePath);
 
-            // TODO: ここで実況モードの初期設定
+            // 実況モードの初期設定
             switch (Program._config.SpeakerSettings?.SpeakModes[PlayerWho.You])
             {
                 case Config.Speaker.SpeakModeOn:
@@ -296,6 +306,14 @@ namespace MayhemFamiliar
                 default:
                     Logger.Instance.Log($"{this.GetType().Name}: 不明な実況モード: {Program._config.SpeakerSettings?.SpeakModes[PlayerWho.Opponent]}", LogLevel.Error);
                     break;
+            }
+            if (Program._config.SpeakerSettings?.SpeakDraftPick ?? true)
+            {
+                checkBoxDraft.Checked = true;
+            }
+            if (Program._config.SpeakerSettings?.SpeakSealedOpen ?? true)
+            {
+                checkBoxSealed.Checked = true;
             }
 
             // LogWacher起動

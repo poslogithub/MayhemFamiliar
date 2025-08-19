@@ -48,6 +48,8 @@
             this.buttonYourTestSpeak = new System.Windows.Forms.Button();
             this.tabPageLog = new System.Windows.Forms.TabPage();
             this.textBoxLog = new System.Windows.Forms.TextBox();
+            this.checkBoxDraft = new System.Windows.Forms.CheckBox();
+            this.checkBoxSealed = new System.Windows.Forms.CheckBox();
             this.tabControl1.SuspendLayout();
             this.tabPageSpeaker.SuspendLayout();
             this.groupBoxOpponentsSpeakMode.SuspendLayout();
@@ -70,6 +72,8 @@
             // 
             // tabPageSpeaker
             // 
+            this.tabPageSpeaker.Controls.Add(this.checkBoxSealed);
+            this.tabPageSpeaker.Controls.Add(this.checkBoxDraft);
             this.tabPageSpeaker.Controls.Add(this.listBoxOpponentsVoices);
             this.tabPageSpeaker.Controls.Add(this.groupBoxOpponentsSpeakMode);
             this.tabPageSpeaker.Controls.Add(this.groupBoxYourSpeakMode);
@@ -88,9 +92,9 @@
             // 
             this.listBoxOpponentsVoices.FormattingEnabled = true;
             this.listBoxOpponentsVoices.ItemHeight = 12;
-            this.listBoxOpponentsVoices.Location = new System.Drawing.Point(399, 160);
+            this.listBoxOpponentsVoices.Location = new System.Drawing.Point(405, 172);
             this.listBoxOpponentsVoices.Name = "listBoxOpponentsVoices";
-            this.listBoxOpponentsVoices.Size = new System.Drawing.Size(390, 256);
+            this.listBoxOpponentsVoices.Size = new System.Drawing.Size(379, 232);
             this.listBoxOpponentsVoices.TabIndex = 10;
             // 
             // groupBoxOpponentsSpeakMode
@@ -144,7 +148,7 @@
             this.groupBoxYourSpeakMode.Controls.Add(this.radioButtonYourSpeakModeOn);
             this.groupBoxYourSpeakMode.Location = new System.Drawing.Point(3, 6);
             this.groupBoxYourSpeakMode.Name = "groupBoxYourSpeakMode";
-            this.groupBoxYourSpeakMode.Size = new System.Drawing.Size(390, 90);
+            this.groupBoxYourSpeakMode.Size = new System.Drawing.Size(390, 65);
             this.groupBoxYourSpeakMode.TabIndex = 4;
             this.groupBoxYourSpeakMode.TabStop = false;
             this.groupBoxYourSpeakMode.Text = "自分のアクション";
@@ -175,9 +179,9 @@
             // 
             this.groupBoxOpponentsSynthesizer.Controls.Add(this.comboBoxOpponentSynthesizer);
             this.groupBoxOpponentsSynthesizer.Controls.Add(this.buttonOpponentsTestSpeak);
-            this.groupBoxOpponentsSynthesizer.Location = new System.Drawing.Point(399, 102);
+            this.groupBoxOpponentsSynthesizer.Location = new System.Drawing.Point(399, 120);
             this.groupBoxOpponentsSynthesizer.Name = "groupBoxOpponentsSynthesizer";
-            this.groupBoxOpponentsSynthesizer.Size = new System.Drawing.Size(390, 50);
+            this.groupBoxOpponentsSynthesizer.Size = new System.Drawing.Size(390, 296);
             this.groupBoxOpponentsSynthesizer.TabIndex = 9;
             this.groupBoxOpponentsSynthesizer.TabStop = false;
             this.groupBoxOpponentsSynthesizer.Text = "対戦相手の音声合成ソフト";
@@ -204,18 +208,18 @@
             // 
             this.listBoxYourVoices.FormattingEnabled = true;
             this.listBoxYourVoices.ItemHeight = 12;
-            this.listBoxYourVoices.Location = new System.Drawing.Point(3, 160);
+            this.listBoxYourVoices.Location = new System.Drawing.Point(9, 172);
             this.listBoxYourVoices.Name = "listBoxYourVoices";
-            this.listBoxYourVoices.Size = new System.Drawing.Size(390, 256);
+            this.listBoxYourVoices.Size = new System.Drawing.Size(378, 232);
             this.listBoxYourVoices.TabIndex = 1;
             // 
             // groupBoxYourSynthesizer
             // 
             this.groupBoxYourSynthesizer.Controls.Add(this.comboBoxYourSynthesizer);
             this.groupBoxYourSynthesizer.Controls.Add(this.buttonYourTestSpeak);
-            this.groupBoxYourSynthesizer.Location = new System.Drawing.Point(3, 102);
+            this.groupBoxYourSynthesizer.Location = new System.Drawing.Point(3, 120);
             this.groupBoxYourSynthesizer.Name = "groupBoxYourSynthesizer";
-            this.groupBoxYourSynthesizer.Size = new System.Drawing.Size(390, 50);
+            this.groupBoxYourSynthesizer.Size = new System.Drawing.Size(390, 296);
             this.groupBoxYourSynthesizer.TabIndex = 6;
             this.groupBoxYourSynthesizer.TabStop = false;
             this.groupBoxYourSynthesizer.Text = "自分の音声合成ソフト";
@@ -260,6 +264,26 @@
             this.textBoxLog.Size = new System.Drawing.Size(786, 418);
             this.textBoxLog.TabIndex = 0;
             // 
+            // checkBoxDraft
+            // 
+            this.checkBoxDraft.AutoSize = true;
+            this.checkBoxDraft.Location = new System.Drawing.Point(9, 77);
+            this.checkBoxDraft.Name = "checkBoxDraft";
+            this.checkBoxDraft.Size = new System.Drawing.Size(133, 16);
+            this.checkBoxDraft.TabIndex = 11;
+            this.checkBoxDraft.Text = "ドラフトピックを実況する";
+            this.checkBoxDraft.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxSealed
+            // 
+            this.checkBoxSealed.AutoSize = true;
+            this.checkBoxSealed.Location = new System.Drawing.Point(9, 99);
+            this.checkBoxSealed.Name = "checkBoxSealed";
+            this.checkBoxSealed.Size = new System.Drawing.Size(139, 16);
+            this.checkBoxSealed.TabIndex = 12;
+            this.checkBoxSealed.Text = "シールド開封を実況する";
+            this.checkBoxSealed.UseVisualStyleBackColor = true;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -271,6 +295,7 @@
             this.Text = "MayhemFamiliar";
             this.tabControl1.ResumeLayout(false);
             this.tabPageSpeaker.ResumeLayout(false);
+            this.tabPageSpeaker.PerformLayout();
             this.groupBoxOpponentsSpeakMode.ResumeLayout(false);
             this.groupBoxOpponentsSpeakMode.PerformLayout();
             this.groupBoxYourSpeakMode.ResumeLayout(false);
@@ -304,6 +329,8 @@
         private System.Windows.Forms.Button buttonOpponentsTestSpeak;
         private System.Windows.Forms.ComboBox comboBoxOpponentSynthesizer;
         private System.Windows.Forms.ComboBox comboBoxYourSynthesizer;
+        private System.Windows.Forms.CheckBox checkBoxSealed;
+        private System.Windows.Forms.CheckBox checkBoxDraft;
     }
 }
 
