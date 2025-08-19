@@ -72,13 +72,20 @@ namespace MayhemFamiliar
             switch (verb)
             {
                 case GameStage.Start:
+                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     dialogue = "対戦よろしくお願いします。";
                     break;
                 case GreMessageType.MulliganReq:
+                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     dialogue = "マリガンチェック。";
                     break;
                 case GameStage.GameOver:
+                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     dialogue = "対戦ありがとうございました。";
+                    break;
+                case TurnInfo.PhaseCombat:
+                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
+                    dialogue = "コンバット。";
                     break;
             }
             if (!string.IsNullOrEmpty(dialogue))
@@ -96,9 +103,11 @@ namespace MayhemFamiliar
             switch (verb)
             {
                 case DraftKey.Pick:
+                    if (!Program._config.SpeakerSettings.SpeakDraftPick) return;
                     dialogue = $"{string.Join(" ", tokens.Skip(2))}をピック。";
                     break;
                 case AnnotationType.NewTurnStarted:
+                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     int turnNumber;
                     try
                     {
@@ -129,6 +138,7 @@ namespace MayhemFamiliar
                     }
                     break;
                 case AnnotationType.TokenCreated:
+                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     string tokenName = RemoveObjectiveDelimiters(tokens[2]);
                     switch (subject)
                     {
@@ -161,6 +171,7 @@ namespace MayhemFamiliar
             switch (verb)
             {
                 case DraftKey.Pack:
+                    if (!Program._config.SpeakerSettings.SpeakDraftPick) return;
                     int packNum = int.Parse(tokens[2]);
                     int pickNum = int.Parse(tokens[3]);
                     if (packNum < 1 || pickNum < 1)
@@ -177,9 +188,25 @@ namespace MayhemFamiliar
                         dialogue = $"{packNum}の{pickNum}。";
                     }
                     break;
-                case DraftKey.PackRarity:
-                    int rarityNum = int.Parse(tokens[2]);
-                    switch (rarityNum)
+                case DraftKey.DraftRarity:
+                    if (!Program._config.SpeakerSettings.SpeakDraftPick) return;
+                    int draftRarityNum = int.Parse(tokens[2]);
+                    switch (draftRarityNum)
+                    {
+                        case 5: // 神話レア
+                            dialogue = $"神話レアは、{string.Join(" ", tokens.Skip(3))}。";
+                            break;
+                        case 4: // レア
+                            dialogue = $"レアは、{string.Join(" ", tokens.Skip(3))}。";
+                            break;
+                        default:
+                            return;
+                    }
+                    break;
+                case SealedKey.SealedRarity:
+                    if (!Program._config.SpeakerSettings.SpeakSealedOpen) return;
+                    int sealedRarityNum = int.Parse(tokens[2]);
+                    switch (sealedRarityNum)
                     {
                         case 5: // 神話レア
                             dialogue = $"神話レアは、{string.Join(" ", tokens.Skip(3))}。";
@@ -192,6 +219,7 @@ namespace MayhemFamiliar
                     }
                     break;
                 case AnnotationType.ModifiedLife:   // ライフ増減
+                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     int lifeDiff, lifeTotal;
                     try
                     {
@@ -258,6 +286,7 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: {verb} イベントのトークン数が5未満: {eventString}", LogLevel.Error);
                 return;
             }
+            if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
             string objectName = RemoveObjectiveDelimiters(tokens[2]);
             int zoneSrcId, zoneDestId;
             try

@@ -33,21 +33,11 @@ namespace MayhemFamiliar
                     {
                         if (dialogue.StartsWith(PlayerWho.You))
                         {
-                            if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.You] == Config.Speaker.SpeakModeOff)
-                            {
-                                Logger.Instance.Log($"{this.GetType().Name}: {PlayerWho.You} の発話モードがオフのため、スキップ: {dialogue}");
-                                continue;
-                            }
                             dialogue = Regex.Replace(dialogue, $"^{PlayerWho.You} ", "");
                             _synthesizers[PlayerWho.You].ProcessDialogue(dialogue);
                         }
                         else if (dialogue.StartsWith(PlayerWho.Opponent))
                         {
-                            if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeOff)
-                            {
-                                Logger.Instance.Log($"{this.GetType().Name}: {PlayerWho.Opponent} の発話モードがオフのため、スキップ: {dialogue}");
-                                continue;
-                            }
                             dialogue = Regex.Replace(dialogue, $"^{PlayerWho.Opponent} ", "");
                             _synthesizers[PlayerWho.Opponent].ProcessDialogue(dialogue);
                         }

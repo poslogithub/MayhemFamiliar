@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Animation;
@@ -240,7 +241,17 @@ namespace MayhemFamiliar
         public const string GrpIds = "GrpIds";
         public const string Pack = "Pack";
         public const string Pick = "Pick";
-        public const string PackRarity = "PackRarity";
+        public const string DraftRarity = "DraftRarity";
+    }
+    static class SealedKey
+    {
+        public const string Course = "Course";
+        public const string InternalEventName = "InternalEventName";
+        public const string InternalEventNameStartsWith = "Sealed_";
+        public const string CurrentModule = "CurrentModule";
+        public const string DeckSelect = "DeckSelect";
+        public const string CardPool = "CardPool";
+        public const string SealedRarity = "SealedRarity";
     }
     static class Key
     {
@@ -430,14 +441,18 @@ namespace MayhemFamiliar
         public int PriorityPlayer { get; set; }
         public int DecisionPlayer { get; set; }
         public string NextPhase { get; set; }
-        public static string Key = "turnInfo";
-        public static string PhaseKey = "phase";
-        public static string StepKey = "step";
-        public static string TurnNumberKey = "turnNumber";
-        public static string ActivePlayerKey = "activePlayer";
-        public static string PriorityPlayerKey = "priorityPlayer";
-        public static string DecisionPlayerKey = "decisionPlayer";
-        public static string NextPhaseKey = "nextPhase";
+        public string NextStep { get; set; }
+        public const string Key = "turnInfo";
+        public const string PhaseKey = "phase";
+        public const string StepKey = "step";
+        public const string TurnNumberKey = "turnNumber";
+        public const string ActivePlayerKey = "activePlayer";
+        public const string PriorityPlayerKey = "priorityPlayer";
+        public const string DecisionPlayerKey = "decisionPlayer";
+        public const string NextPhaseKey = "nextPhase";
+        public const string NextStepKey = "nextStep";
+        public const string PhaseCombat = "Phase_Combat";
+        public const string StepDeclareBlock = "Step_DeclareBlock";
         public void Reset()
         {
             Phase = "";
@@ -514,6 +529,9 @@ namespace MayhemFamiliar
                 return;
             }
 
+            // 空なら即帰る
+            if (json == null) return;
+
             // ドラフト
             if (json[DraftKey.draftId] != null)
             {
@@ -546,15 +564,15 @@ namespace MayhemFamiliar
                 }
                 if (mythicCardNames.Count > 0)
                 {
-                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.PackRarity} 5 {string.Join(" ", mythicCardNames)}");
+                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.DraftRarity} 5 {string.Join(" ", mythicCardNames)}");
                 }
                 if (rareCardNames.Count > 0)
                 {
-                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.PackRarity} 4 {string.Join(" ", rareCardNames)}");
+                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.DraftRarity} 4 {string.Join(" ", rareCardNames)}");
                 }
                 return;
             }
-            else
+            if (json[DraftKey.Request] != null)
             {
                 // ドラフトピック
                 string request = json[DraftKey.Request]?.ToString() ?? "";
@@ -582,8 +600,51 @@ namespace MayhemFamiliar
                     cardNames.Add(cardName);
                 }
                 EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.Pick} {string.Join(" ", cardNames)}");
+                return;
             }
 
+            // シールド
+            if (json[SealedKey.Course] != null)
+            {
+                JToken course = json[SealedKey.Course];
+                if (course[SealedKey.InternalEventName] != null &&
+                    course[SealedKey.CurrentModule] != null &&
+                    course[SealedKey.CardPool] != null)
+                {
+                    string internalEventName = course[SealedKey.InternalEventName].ToString();
+                    string currentModule = course[SealedKey.CurrentModule].ToString();
+                    int[] cardPool = course[SealedKey.CardPool].ToObject<int[]>();
+                    if (internalEventName.StartsWith(SealedKey.InternalEventNameStartsWith) && currentModule == SealedKey.DeckSelect)
+                    {
+                        List<string> mythicCardNames = new List<string>();
+                        List<string> rareCardNames = new List<string>();
+                        foreach (int grpId in cardPool)
+                        {
+                            int rarity = _cardData.GetRarityByGrpId(grpId);
+                            switch (rarity)
+                            {
+                                case 5:
+                                    mythicCardNames.Add(_cardData.GetCardNameByGrpId(grpId));
+                                    break;
+                                case 4:
+                                    rareCardNames.Add(_cardData.GetCardNameByGrpId(grpId));
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                        if (mythicCardNames.Count > 0)
+                        {
+                            EventQueue.Queue.Enqueue($"{PlayerWho.You} {SealedKey.SealedRarity} 5 {string.Join(" ", mythicCardNames)}");
+                        }
+                        if (rareCardNames.Count > 0)
+                        {
+                            EventQueue.Queue.Enqueue($"{PlayerWho.You} {SealedKey.SealedRarity} 4 {string.Join(" ", rareCardNames)}");
+                        }
+                    }
+                }
+                return;
+            }
 
             // プレイ
             // TransactionIdが無いメッセージは全て無視
@@ -882,18 +943,29 @@ namespace MayhemFamiliar
         {
             if (turnInfo != null)
             {
-                var newPhase = turnInfo[TurnInfo.PhaseKey]?.ToString() ?? _turnInfo.Phase;
-                var newStep = turnInfo[TurnInfo.StepKey]?.ToString() ?? _turnInfo.Step;
-                var newTurnNumber = (int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber);
-                var newActivePlayer = (int)(turnInfo[TurnInfo.ActivePlayerKey] ?? _turnInfo.ActivePlayer);
-                var newPriorityPlayer = (int)(turnInfo[TurnInfo.PriorityPlayerKey] ?? _turnInfo.PriorityPlayer);
-                var newDecisionPlayer = (int)(turnInfo[TurnInfo.DecisionPlayerKey] ?? _turnInfo.DecisionPlayer);
-                var newNextPhase = turnInfo[TurnInfo.NextPhaseKey]?.ToString() ?? _turnInfo.NextPhase;
+                string newPhase = turnInfo[TurnInfo.PhaseKey]?.ToString() ?? _turnInfo.Phase;
+                string newStep = turnInfo[TurnInfo.StepKey]?.ToString() ?? _turnInfo.Step;
+                int newTurnNumber = (int)(turnInfo[TurnInfo.TurnNumberKey] ?? _turnInfo.TurnNumber);
+                int newActivePlayer = (int)(turnInfo[TurnInfo.ActivePlayerKey] ?? _turnInfo.ActivePlayer);
+                int newPriorityPlayer = (int)(turnInfo[TurnInfo.PriorityPlayerKey] ?? _turnInfo.PriorityPlayer);
+                int newDecisionPlayer = (int)(turnInfo[TurnInfo.DecisionPlayerKey] ?? _turnInfo.DecisionPlayer);
+                string newNextPhase = turnInfo[TurnInfo.NextPhaseKey]?.ToString() ?? _turnInfo.NextPhase;
+                string newNextStep = turnInfo[TurnInfo.NextStepKey]?.ToString() ?? _turnInfo.NextStep;
+
                 // 先手第１ターンだけここで実況（本当はターンやフェーズ関連の実況は全部ここに集約すべきだと思う）
                 if (_turnInfo.TurnNumber == 0 && newTurnNumber == 1)
                 {
                     Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(newActivePlayer)} のターン開始: {newTurnNumber}", LogLevel.Debug);
                     EventQueue.Queue.Enqueue($"{GetPlayerWho(newActivePlayer)} {AnnotationType.NewTurnStarted} {newTurnNumber}");
+                }
+                if (_turnInfo.Phase == TurnInfo.PhaseCombat &&
+                    _turnInfo.Step == TurnInfo.StepDeclareBlock &&
+                    newPhase == TurnInfo.PhaseCombat &&
+                    newStep != TurnInfo.StepDeclareBlock)
+                {
+                    // ブロッカーが決まったらコンバット実況（アタッカーがいないとブロッククリーチャー指定ステップは無い）
+                    // ブロッカーがいない場合もブロッククリーチャー指定ステップは無いのでは？
+                    // EventQueue.Queue.Enqueue($"{GetPlayerWho(newActivePlayer)} {TurnInfo.PhaseCombat}");
                 }
 
                 // 更新
@@ -904,6 +976,7 @@ namespace MayhemFamiliar
                 _turnInfo.PriorityPlayer = (int)(turnInfo[TurnInfo.PriorityPlayerKey] ?? _turnInfo.PriorityPlayer);
                 _turnInfo.DecisionPlayer = (int)(turnInfo[TurnInfo.DecisionPlayerKey] ?? _turnInfo.DecisionPlayer);
                 _turnInfo.NextPhase = turnInfo[TurnInfo.NextPhaseKey]?.ToString() ?? _turnInfo.NextPhase;
+                _turnInfo.NextStep = turnInfo[TurnInfo.NextStepKey]?.ToString() ?? _turnInfo.NextStep;
 
                 Logger.Instance.Log($"{this.GetType().Name}: ターン情報更新 - " +
                     $"Phase: {_turnInfo.Phase}, Step: {_turnInfo.Step}, " +

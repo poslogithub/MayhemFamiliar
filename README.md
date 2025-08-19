@@ -5,7 +5,7 @@
 これは何？
 ---------
 MTG Arenaの対戦内容を実況してくれます。
-音声合成エンジンとして「Microsoft Speech API（SAPI）」および「VOICEVOX」に対応しています。
+音声合成エンジンとして「Microsoft Speech API（SAPI）」「VOICEVOX」「AssistantSeika」に対応しています。
 
 使い方
 ------
@@ -14,7 +14,7 @@ MTG Arenaの対戦内容を実況してくれます。
 - 音声合成製品を起動
   - AssistantSeikaの場合、MayhemFamiliar.exeと同じフォルダに「SeikaSay2.exe」を配置してください。
 - MayhemFamiliar.exeを実行
-  - ※MTGアリーナ、VOICEVOX、MayhemFamiliarの起動順は任意です
+  - ※MTGアリーナとMayhemFamiliarの起動順は任意です
 - 「話者」タブで音声合成エンジンと話者を選択
 
 動作環境

@@ -80,6 +80,8 @@ namespace MayhemFamiliar
                 { PlayerWho.Opponent, "" },
             };
             public string SeikaSay2Exe = "SeikaSay2.exe";
+            public bool SpeakDraftPick { get; set; } = true;
+            public bool SpeakSealedOpen { get; set; } = true;
         }
         public Speaker SpeakerSettings { get; set; } = new Speaker();
     }
