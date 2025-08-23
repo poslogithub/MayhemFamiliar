@@ -14,7 +14,6 @@ MTG Arenaの対戦内容を実況してくれます。
 - 音声合成製品を起動
   - AssistantSeikaの場合、MayhemFamiliar.exeと同じフォルダに「SeikaSay2.exe」を配置してください。
 - MayhemFamiliar.exeを実行
-  - ※MTGアリーナとMayhemFamiliarの起動順は任意です
 - 「話者」タブで音声合成エンジンと話者を選択
 
 動作環境
