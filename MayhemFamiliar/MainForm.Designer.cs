@@ -29,8 +29,10 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
-            this.tabControl1 = new System.Windows.Forms.TabControl();
+            this.tabControlMain = new System.Windows.Forms.TabControl();
             this.tabPageSpeaker = new System.Windows.Forms.TabPage();
+            this.checkBoxSealed = new System.Windows.Forms.CheckBox();
+            this.checkBoxDraft = new System.Windows.Forms.CheckBox();
             this.listBoxOpponentsVoices = new System.Windows.Forms.ListBox();
             this.groupBoxOpponentsSpeakMode = new System.Windows.Forms.GroupBox();
             this.radioButtonOpponentsSpeakModeOff = new System.Windows.Forms.RadioButton();
@@ -46,29 +48,36 @@
             this.groupBoxYourSynthesizer = new System.Windows.Forms.GroupBox();
             this.comboBoxYourSynthesizer = new System.Windows.Forms.ComboBox();
             this.buttonYourTestSpeak = new System.Windows.Forms.Button();
+            this.tabPageTool = new System.Windows.Forms.TabPage();
+            this.groupBoxYukaConneNEO = new System.Windows.Forms.GroupBox();
+            this.labelYukaConneNEOPort = new System.Windows.Forms.Label();
+            this.textBoxYukaConneNEOPort = new System.Windows.Forms.TextBox();
+            this.checkBoxUseYukaConneNEO = new System.Windows.Forms.CheckBox();
             this.tabPageLog = new System.Windows.Forms.TabPage();
             this.textBoxLog = new System.Windows.Forms.TextBox();
-            this.checkBoxDraft = new System.Windows.Forms.CheckBox();
-            this.checkBoxSealed = new System.Windows.Forms.CheckBox();
-            this.tabControl1.SuspendLayout();
+            this.label1 = new System.Windows.Forms.Label();
+            this.tabControlMain.SuspendLayout();
             this.tabPageSpeaker.SuspendLayout();
             this.groupBoxOpponentsSpeakMode.SuspendLayout();
             this.groupBoxYourSpeakMode.SuspendLayout();
             this.groupBoxOpponentsSynthesizer.SuspendLayout();
             this.groupBoxYourSynthesizer.SuspendLayout();
+            this.tabPageTool.SuspendLayout();
+            this.groupBoxYukaConneNEO.SuspendLayout();
             this.tabPageLog.SuspendLayout();
             this.SuspendLayout();
             // 
-            // tabControl1
+            // tabControlMain
             // 
-            this.tabControl1.Controls.Add(this.tabPageSpeaker);
-            this.tabControl1.Controls.Add(this.tabPageLog);
-            this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabControl1.Location = new System.Drawing.Point(0, 0);
-            this.tabControl1.Name = "tabControl1";
-            this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(800, 450);
-            this.tabControl1.TabIndex = 0;
+            this.tabControlMain.Controls.Add(this.tabPageSpeaker);
+            this.tabControlMain.Controls.Add(this.tabPageTool);
+            this.tabControlMain.Controls.Add(this.tabPageLog);
+            this.tabControlMain.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabControlMain.Location = new System.Drawing.Point(0, 0);
+            this.tabControlMain.Name = "tabControlMain";
+            this.tabControlMain.SelectedIndex = 0;
+            this.tabControlMain.Size = new System.Drawing.Size(800, 450);
+            this.tabControlMain.TabIndex = 0;
             // 
             // tabPageSpeaker
             // 
@@ -85,8 +94,28 @@
             this.tabPageSpeaker.Padding = new System.Windows.Forms.Padding(3);
             this.tabPageSpeaker.Size = new System.Drawing.Size(792, 424);
             this.tabPageSpeaker.TabIndex = 1;
-            this.tabPageSpeaker.Text = "話者";
+            this.tabPageSpeaker.Text = "実況";
             this.tabPageSpeaker.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxSealed
+            // 
+            this.checkBoxSealed.AutoSize = true;
+            this.checkBoxSealed.Location = new System.Drawing.Point(9, 99);
+            this.checkBoxSealed.Name = "checkBoxSealed";
+            this.checkBoxSealed.Size = new System.Drawing.Size(139, 16);
+            this.checkBoxSealed.TabIndex = 12;
+            this.checkBoxSealed.Text = "シールド開封を実況する";
+            this.checkBoxSealed.UseVisualStyleBackColor = true;
+            // 
+            // checkBoxDraft
+            // 
+            this.checkBoxDraft.AutoSize = true;
+            this.checkBoxDraft.Location = new System.Drawing.Point(9, 77);
+            this.checkBoxDraft.Name = "checkBoxDraft";
+            this.checkBoxDraft.Size = new System.Drawing.Size(133, 16);
+            this.checkBoxDraft.TabIndex = 11;
+            this.checkBoxDraft.Text = "ドラフトピックを実況する";
+            this.checkBoxDraft.UseVisualStyleBackColor = true;
             // 
             // listBoxOpponentsVoices
             // 
@@ -242,6 +271,56 @@
             this.buttonYourTestSpeak.Text = "テスト発声";
             this.buttonYourTestSpeak.UseVisualStyleBackColor = true;
             // 
+            // tabPageTool
+            // 
+            this.tabPageTool.Controls.Add(this.groupBoxYukaConneNEO);
+            this.tabPageTool.Location = new System.Drawing.Point(4, 22);
+            this.tabPageTool.Name = "tabPageTool";
+            this.tabPageTool.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPageTool.Size = new System.Drawing.Size(792, 424);
+            this.tabPageTool.TabIndex = 2;
+            this.tabPageTool.Text = "連携";
+            this.tabPageTool.UseVisualStyleBackColor = true;
+            // 
+            // groupBoxYukaConneNEO
+            // 
+            this.groupBoxYukaConneNEO.Controls.Add(this.label1);
+            this.groupBoxYukaConneNEO.Controls.Add(this.labelYukaConneNEOPort);
+            this.groupBoxYukaConneNEO.Controls.Add(this.textBoxYukaConneNEOPort);
+            this.groupBoxYukaConneNEO.Controls.Add(this.checkBoxUseYukaConneNEO);
+            this.groupBoxYukaConneNEO.Location = new System.Drawing.Point(8, 6);
+            this.groupBoxYukaConneNEO.Name = "groupBoxYukaConneNEO";
+            this.groupBoxYukaConneNEO.Size = new System.Drawing.Size(400, 90);
+            this.groupBoxYukaConneNEO.TabIndex = 1;
+            this.groupBoxYukaConneNEO.TabStop = false;
+            this.groupBoxYukaConneNEO.Text = "ゆかりねっとコネクターNEO";
+            // 
+            // labelYukaConneNEOPort
+            // 
+            this.labelYukaConneNEOPort.AutoSize = true;
+            this.labelYukaConneNEOPort.Location = new System.Drawing.Point(6, 43);
+            this.labelYukaConneNEOPort.Name = "labelYukaConneNEOPort";
+            this.labelYukaConneNEOPort.Size = new System.Drawing.Size(63, 12);
+            this.labelYukaConneNEOPort.TabIndex = 2;
+            this.labelYukaConneNEOPort.Text = "ポート番号: ";
+            // 
+            // textBoxYukaConneNEOPort
+            // 
+            this.textBoxYukaConneNEOPort.Location = new System.Drawing.Point(75, 40);
+            this.textBoxYukaConneNEOPort.Name = "textBoxYukaConneNEOPort";
+            this.textBoxYukaConneNEOPort.Size = new System.Drawing.Size(50, 19);
+            this.textBoxYukaConneNEOPort.TabIndex = 1;
+            // 
+            // checkBoxUseYukaConneNEO
+            // 
+            this.checkBoxUseYukaConneNEO.AutoSize = true;
+            this.checkBoxUseYukaConneNEO.Location = new System.Drawing.Point(6, 18);
+            this.checkBoxUseYukaConneNEO.Name = "checkBoxUseYukaConneNEO";
+            this.checkBoxUseYukaConneNEO.Size = new System.Drawing.Size(197, 16);
+            this.checkBoxUseYukaConneNEO.TabIndex = 0;
+            this.checkBoxUseYukaConneNEO.Text = "ゆかりねっとコネクターNEOと連携する";
+            this.checkBoxUseYukaConneNEO.UseVisualStyleBackColor = true;
+            // 
             // tabPageLog
             // 
             this.tabPageLog.Controls.Add(this.textBoxLog);
@@ -264,36 +343,25 @@
             this.textBoxLog.Size = new System.Drawing.Size(786, 418);
             this.textBoxLog.TabIndex = 0;
             // 
-            // checkBoxDraft
+            // label1
             // 
-            this.checkBoxDraft.AutoSize = true;
-            this.checkBoxDraft.Location = new System.Drawing.Point(9, 77);
-            this.checkBoxDraft.Name = "checkBoxDraft";
-            this.checkBoxDraft.Size = new System.Drawing.Size(133, 16);
-            this.checkBoxDraft.TabIndex = 11;
-            this.checkBoxDraft.Text = "ドラフトピックを実況する";
-            this.checkBoxDraft.UseVisualStyleBackColor = true;
-            // 
-            // checkBoxSealed
-            // 
-            this.checkBoxSealed.AutoSize = true;
-            this.checkBoxSealed.Location = new System.Drawing.Point(9, 99);
-            this.checkBoxSealed.Name = "checkBoxSealed";
-            this.checkBoxSealed.Size = new System.Drawing.Size(139, 16);
-            this.checkBoxSealed.TabIndex = 12;
-            this.checkBoxSealed.Text = "シールド開封を実況する";
-            this.checkBoxSealed.UseVisualStyleBackColor = true;
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(6, 68);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(369, 12);
+            this.label1.TabIndex = 3;
+            this.label1.Text = "ゆかコネNEO > ︙ > 動作状況 > Communication Port > HTTP(NEO-API)";
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Controls.Add(this.tabControl1);
+            this.Controls.Add(this.tabControlMain);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "MainForm";
             this.Text = "MayhemFamiliar";
-            this.tabControl1.ResumeLayout(false);
+            this.tabControlMain.ResumeLayout(false);
             this.tabPageSpeaker.ResumeLayout(false);
             this.tabPageSpeaker.PerformLayout();
             this.groupBoxOpponentsSpeakMode.ResumeLayout(false);
@@ -302,6 +370,9 @@
             this.groupBoxYourSpeakMode.PerformLayout();
             this.groupBoxOpponentsSynthesizer.ResumeLayout(false);
             this.groupBoxYourSynthesizer.ResumeLayout(false);
+            this.tabPageTool.ResumeLayout(false);
+            this.groupBoxYukaConneNEO.ResumeLayout(false);
+            this.groupBoxYukaConneNEO.PerformLayout();
             this.tabPageLog.ResumeLayout(false);
             this.tabPageLog.PerformLayout();
             this.ResumeLayout(false);
@@ -310,7 +381,7 @@
 
         #endregion
 
-        private System.Windows.Forms.TabControl tabControl1;
+        private System.Windows.Forms.TabControl tabControlMain;
         private System.Windows.Forms.TabPage tabPageLog;
         private System.Windows.Forms.TabPage tabPageSpeaker;
         private System.Windows.Forms.TextBox textBoxLog;
@@ -331,6 +402,12 @@
         private System.Windows.Forms.ComboBox comboBoxYourSynthesizer;
         private System.Windows.Forms.CheckBox checkBoxSealed;
         private System.Windows.Forms.CheckBox checkBoxDraft;
+        private System.Windows.Forms.TabPage tabPageTool;
+        private System.Windows.Forms.CheckBox checkBoxUseYukaConneNEO;
+        private System.Windows.Forms.GroupBox groupBoxYukaConneNEO;
+        private System.Windows.Forms.Label labelYukaConneNEOPort;
+        private System.Windows.Forms.TextBox textBoxYukaConneNEOPort;
+        private System.Windows.Forms.Label label1;
     }
 }
 

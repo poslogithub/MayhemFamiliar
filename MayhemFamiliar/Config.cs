@@ -1,9 +1,7 @@
 ﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using System.Windows.Forms;
 
 namespace MayhemFamiliar
@@ -84,6 +82,14 @@ namespace MayhemFamiliar
             public bool SpeakSealedOpen { get; set; } = true;
         }
         public Speaker SpeakerSettings { get; set; } = new Speaker();
+
+        public class YukaConneNEO
+        {
+            public bool Enabled { get; set; } = false;
+            public int Port { get; set; } = 15520;
+            public string CardDictionaryFileName { get; set; } = "CardDictionary.csv";
+        }
+        public YukaConneNEO YukaConneNEOSettings { get; set; } = new YukaConneNEO();
     }
 
 }

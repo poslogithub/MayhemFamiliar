@@ -107,6 +107,7 @@ namespace MayhemFamiliar
             toolTipSpeakMode.SetToolTip(radioButtonYourSpeakModeOn, "「大釜の使い魔をキャスト。」");
             toolTipSpeakMode.SetToolTip(radioButtonOpponentsSpeakModeOn, "「波乱の悪魔をキャスト。」");
             toolTipSpeakMode.SetToolTip(radioButtonOpponentsSpeakModeThird, "「お相手が波乱の悪魔をキャスト。」");
+            toolTipSpeakMode.SetToolTip(textBoxYukaConneNEOPort, "ゆかコネNEO > ︙ > 動作状況 > Communication Port > HTTP(NEO - API)");
 
             // イベントハンドラの設定
             this.Shown += Form_Shown;
@@ -128,8 +129,58 @@ namespace MayhemFamiliar
             {
                 Program._config.SpeakerSettings.SpeakSealedOpen = checkBoxSealed.Checked;
             };
+
+            // ゆかコネNEOのイベントハンドラを設定
+            checkBoxUseYukaConneNEO.CheckedChanged += (s, e) =>
+            {
+                Program._config.YukaConneNEOSettings.Enabled = checkBoxUseYukaConneNEO.Checked;
+                if (Program._config.YukaConneNEOSettings.Enabled)
+                {
+                    CreateCardDictionary();
+                }
+            };
+            textBoxYukaConneNEOPort.TextChanged += (s, e) =>
+            {
+                if (int.TryParse(textBoxYukaConneNEOPort.Text, out int port))
+                {
+                    if (port < 1 || port > 65535)
+                    {
+                        MessageBox.Show("ポート番号は1から65535の範囲でなければなりません。", "ポート番号エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    Program._config.YukaConneNEOSettings.Port = port;
+                }
+                else
+                {
+                    MessageBox.Show("有効なポート番号を入力してください。", "ポート番号エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
         }
 
+        private void CreateCardDictionary()
+        {
+            while (_jsonParser == null)
+            {
+                Thread.Sleep(100);
+            }
+            Logger.Instance.Log($"{this.GetType().Name}: ゆかりねっとコネクターNEO用カード辞書作成");
+            List<string> allCardNames = _jsonParser.GetAllCardNames();
+            try
+            {
+                using (StreamWriter writer = new StreamWriter(Program._config.YukaConneNEOSettings.CardDictionaryFileName))
+                {
+                    foreach (var cardName in allCardNames)
+                    {
+                        writer.WriteLine($"{cardName},{cardName}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("ゆかりねっとコネクターNEO用カード辞書作成に失敗しました。", "カード辞書作成失敗", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Logger.Instance.Log($"{this.GetType().Name}: ゆかりねっとコネクターNEO用カード辞書作成失敗: {ex.Message}");
+            }
+        }
 
         private void ChangeYourSpeakMode(object sender, EventArgs e)
         {
@@ -316,6 +367,7 @@ namespace MayhemFamiliar
                 checkBoxSealed.Checked = true;
             }
 
+
             // LogWacher起動
             _logWatcer = new LogWatcher(_mtgaLogFilePath);
             _ctsLogWatcher = new CancellationTokenSource();
@@ -367,6 +419,13 @@ namespace MayhemFamiliar
                     // ここで_comboBoxSynthesizers[].SelectedIndexChangedが実行されて_configが更新される
                 }
             }
+
+            // YukaConneNEOの初期設定
+            if (Program._config.YukaConneNEOSettings.Enabled)
+            {
+                checkBoxUseYukaConneNEO.Checked = true;
+            }
+            textBoxYukaConneNEOPort.Text = Program._config.YukaConneNEOSettings.Port.ToString();
         }
 
         private void Form_FormClosing(object sender, FormClosingEventArgs e)
