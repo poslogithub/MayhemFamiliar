@@ -6,10 +6,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
+using static MayhemFamiliar.Config;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace MayhemFamiliar
@@ -31,20 +34,7 @@ namespace MayhemFamiliar
                 {
                     if (DialogueQueue.Queue.TryDequeue(out string dialogue))
                     {
-                        if (dialogue.StartsWith(PlayerWho.You))
-                        {
-                            dialogue = Regex.Replace(dialogue, $"^{PlayerWho.You} ", "");
-                            _synthesizers[PlayerWho.You].ProcessDialogue(dialogue);
-                        }
-                        else if (dialogue.StartsWith(PlayerWho.Opponent))
-                        {
-                            dialogue = Regex.Replace(dialogue, $"^{PlayerWho.Opponent} ", "");
-                            _synthesizers[PlayerWho.Opponent].ProcessDialogue(dialogue);
-                        }
-                        else
-                        {
-                            Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤー: {dialogue}");
-                        }
+                        InitProcessDialog(dialogue);
                     }
                     else
                     {
@@ -61,6 +51,57 @@ namespace MayhemFamiliar
             catch (Exception ex)
             {
                 Logger.Instance.Log($"{this.GetType().Name}: エラー発生: {ex.Message}");
+            }
+        }
+        private void InitProcessDialog(string dialogue)
+        {
+            string playerWho = PlayerWho.Unknown;
+            if (dialogue.StartsWith(PlayerWho.You))
+            {
+                playerWho = PlayerWho.You;
+            }
+            else if (dialogue.StartsWith(PlayerWho.Opponent))
+            {
+                playerWho = PlayerWho.Opponent;
+            }
+
+            if (playerWho != PlayerWho.Unknown)
+            { 
+                dialogue = Regex.Replace(dialogue, $"^{playerWho} ", "");
+                if (Program._config.SpeakerSettings.SpeakModes[playerWho] != Config.Speaker.SpeakModeOff)
+                {
+                    _synthesizers[playerWho].ProcessDialogue(dialogue);
+                }
+                if (Program._config.YukaConneNEOSettings.Enabled)
+                {
+                    Task.Run(() => SendTextToYukaConneNEOAsync(dialogue));
+                }
+            }
+            else
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤー: {dialogue}");
+            }
+        }
+        public async Task SendTextToYukaConneNEOAsync(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+
+            string url = $"http://127.0.0.1:{Program._config.YukaConneNEOSettings.Port}/api/input?text={Uri.EscapeDataString(text)}";
+            Logger.Instance.Log($"{typeof(YukaConneNEO).Name}: ゆかコネNEOにテキスト送信: {text}");
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    var response = await client.GetAsync(url);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Logger.Instance.Log($"{typeof(YukaConneNEO).Name}: ゆかコネNEOがエラー応答: {url} {response.StatusCode}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{typeof(YukaConneNEO).Name}: ゆかコネNEOへのテキスト送信が失敗: {url} {ex.Message}");
             }
         }
         public List<IVoice> GetVoices(string playerWho)

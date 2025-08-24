@@ -8,8 +8,11 @@ namespace MayhemFamiliar
 {
     internal class CardData : IDisposable
     {
+        private const string LocColumnName = "Loc";
+        private const string RarityColumnName = "Rarity";
         private readonly string _dbFilePath;
         private readonly string _uiCulture;
+        private readonly string _localizationsTableName;
         private readonly SQLiteConnection _connection;
         private bool _disposed;
 
@@ -17,16 +20,34 @@ namespace MayhemFamiliar
         {
             _dbFilePath = dbFilePath ?? throw new ArgumentNullException(nameof(dbFilePath));
             _uiCulture = CultureInfo.CurrentUICulture.Name.Replace("-", "");
+            _localizationsTableName = $"Localizations_{_uiCulture}";
             _connection = new SQLiteConnection($"Data Source={_dbFilePath};Version=3;");
             _connection.Open();
+        }
+
+        public List<string> GetAllCardNames()
+        {
+            List<string> cardNames = new List<string>();
+            string sql = $"SELECT DISTINCT l.Loc FROM Cards c JOIN {_localizationsTableName} l ON c.TitleId = l.LocId WHERE l.Formatted = 1";
+            using (var cmd = new SQLiteCommand(sql, _connection))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string loc = reader.GetString(0);
+                        loc = RemoveBrackets(loc);
+                        cardNames.Add(loc);
+                    }
+                }
+            }
+            return cardNames;
         }
 
         public string GetCardNameByGrpId(int grpId)
         {
             string loc = null;
-            string tableName = $"Localizations_{_uiCulture}";
-            string locColumnName = "Loc";
-            string sql = $"SELECT l.Loc FROM Cards c JOIN {tableName} l ON c.TitleId = l.LocId WHERE c.GrpId = @GrpId AND l.Formatted = 1";
+            string sql = $"SELECT l.Loc FROM Cards c JOIN {_localizationsTableName} l ON c.TitleId = l.LocId WHERE c.GrpId = @GrpId AND l.Formatted = 1";
 
             using (var cmd = new SQLiteCommand(sql, _connection))
             {
@@ -35,7 +56,7 @@ namespace MayhemFamiliar
                 {
                     if (reader.Read())
                     {
-                        loc = reader[locColumnName]?.ToString();
+                        loc = reader[LocColumnName]?.ToString();
                     }
                 }
             }
@@ -53,16 +74,14 @@ namespace MayhemFamiliar
             string loc = null;
 
             // 変数4: Localizations_変数2 テーブルから Loc を取得
-            string tableName = $"Localizations_{_uiCulture}";
-            string sql = $"SELECT Loc FROM {tableName} WHERE LocId = @LocId AND Formatted = 1";
+            string sql = $"SELECT Loc FROM {_localizationsTableName} WHERE LocId = {locId} AND Formatted = 1";
             using (var cmd = new SQLiteCommand(sql, _connection))
             {
-                cmd.Parameters.AddWithValue("@LocId", locId);
                 using (var reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
-                        loc = reader["Loc"]?.ToString();
+                        loc = reader[LocColumnName]?.ToString();
                     }
                 }
             }
@@ -77,9 +96,7 @@ namespace MayhemFamiliar
 
         public int GetRarityByGrpId(int grpId)
         {
-            string tableName = $"Cards";
-            string rarityColumnName = "Rarity";
-            string sql = $"SELECT {rarityColumnName} FROM {tableName} WHERE GrpId = {grpId}";
+            string sql = $"SELECT Rarity FROM Cards WHERE GrpId = {grpId}";
             int rarity = -1;
             using (var cmd = new SQLiteCommand(sql, _connection))
             {
@@ -87,7 +104,7 @@ namespace MayhemFamiliar
                 {
                     if (reader.Read())
                     {
-                        rarity = (int)reader[rarityColumnName];
+                        rarity = (int)reader[RarityColumnName];
                     }
                 }
             }

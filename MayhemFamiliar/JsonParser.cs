@@ -115,8 +115,8 @@ namespace MayhemFamiliar
         public const string SelectNReq = "GREMessageType_SelectNReq";
         public const string SelectTargetsReq = "GREMessageType_SelectTargetsReq";
         public const string SetSettingsResp = "GREMessageType_SetSettingsResp";
-        public const string SubmitAttackersResp = "GREMessageType_SubmitAttackersResp"; // TODO: 「アタック」
-        public const string SubmitBlockersResp = "GREMessageType_SubmitBlockersResp";   // TODO: 「ブロック」
+        public const string SubmitAttackersResp = "GREMessageType_SubmitAttackersResp"; // 「アタック」
+        public const string SubmitBlockersResp = "GREMessageType_SubmitBlockersResp";   // 「ブロック」
         public const string SubmitTargetsResp = "GREMessageType_SubmitTargetsResp";
         public const string UIMessage = "GREMessageType_UIMessage";
         public static string[] IgnoreType =
@@ -481,6 +481,15 @@ namespace MayhemFamiliar
         {
             _cardDatabaseFile = cardDatabaseFile;
             _gameObjects = new Dictionary<int, GameObject>();
+        }
+
+        public List<string> GetAllCardNames()
+        {
+            while (_cardData == null)
+            {
+                Thread.Sleep(100);
+            }
+            return _cardData.GetAllCardNames();
         }
 
         public async Task Start(CancellationToken cancellationToken)

@@ -72,19 +72,15 @@ namespace MayhemFamiliar
             switch (verb)
             {
                 case GameStage.Start:
-                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     dialogue = "対戦よろしくお願いします。";
                     break;
                 case GreMessageType.MulliganReq:
-                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     dialogue = "マリガンチェック。";
                     break;
                 case GameStage.GameOver:
-                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     dialogue = "対戦ありがとうございました。";
                     break;
                 case TurnInfo.PhaseCombat:
-                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     dialogue = "コンバット。";
                     break;
             }
@@ -107,7 +103,6 @@ namespace MayhemFamiliar
                     dialogue = $"{string.Join(" ", tokens.Skip(2))}をピック。";
                     break;
                 case AnnotationType.NewTurnStarted:
-                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     int turnNumber;
                     try
                     {
@@ -138,7 +133,6 @@ namespace MayhemFamiliar
                     }
                     break;
                 case AnnotationType.TokenCreated:
-                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     string tokenName = RemoveObjectiveDelimiters(tokens[2]);
                     switch (subject)
                     {
@@ -219,7 +213,6 @@ namespace MayhemFamiliar
                     }
                     break;
                 case AnnotationType.ModifiedLife:   // ライフ増減
-                    if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
                     int lifeDiff, lifeTotal;
                     try
                     {
@@ -286,7 +279,6 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: {verb} イベントのトークン数が5未満: {eventString}", LogLevel.Error);
                 return;
             }
-            if (Program._config.SpeakerSettings.SpeakModes[subject] == Config.Speaker.SpeakModeOff) return;
             string objectName = RemoveObjectiveDelimiters(tokens[2]);
             int zoneSrcId, zoneDestId;
             try
