@@ -1,21 +1,314 @@
 ﻿using MayhemFamiliar.QueueManager;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
+using System.IO;
+using System.Security.Permissions;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace MayhemFamiliar
 {
+    internal class Dialogue
+    {
+        public string PlayerWho { get; }
+        public string Content { get; }
+        public Dialogue(Event ev, string text)
+        {
+            PlayerWho = ev.PlayerWho;
+            foreach (string key in ev.Dict.Keys)
+            {
+                if (key == EventDictKey.Name && ev.Dict[key] == Unknown.Name)
+                {
+                    text = text.Replace($"{{{key}}}", "カード");
+                }
+                text = text.Replace($"{{{key}}}", ev.Dict[key]);
+            }
+            Content = text;
+        }
+    }
+    internal static class Mode
+    {
+        public const string Default = "default";
+        public const string Custom = "custom";
+        public const string None = "none";
+    }
+    internal static class Verb
+    {
+        public const string Mythic = "Mythic";
+        public const string Rare = "Rare";
+        public const string GainLife = "GainLife";
+        public const string LoseLife = "LoseLife";
+        public const string DrawKnownCard = "DrawKnownCard";
+        public const string DrawUnknownCard = "DrawUnknownCard";
+    }
+    internal static class TextKey
+    {
+        public const string Event = "Event";
+        public const string DestZoneType = "DestZoneType";
+        public const string ZoneTransferCategory = "ZoneTransferCategory";
+    }
     internal class DialogueGenerator
     {
-        private static readonly string[] IgnoreVerbs = {
-            ZoneTransferCategory.Mill,
-            ZoneTransferCategory.Nil,
-            ZoneTransferCategory.Resolve,
-            ZoneTransferCategory.Surveil,
-        };
+        public CustomDialogues _limitedCustomDialogues;
+        public CustomDialogues _YourCustomDialogues;
+        public CustomDialogues _OpponentsCustomDialogues;
+        public CustomDialogues _OpponentsThirdCustomDialogues;
+        private const string LimitedCustomDialogsFilePath = "CustomDialogues_Limited.json";
+        private const string YourCustomDialogsFilePath = "CustomDialogues_You.json";
+        private const string OpponentsCustomDialogsFilePath = "CustomDialogues_Opponent.json";
+        private const string OpponentsThirdCustomDialogsFilePath = "CustomDialogues_OpponentThird.json";
+
+        public DialogueGenerator()
+        {
+            LoadAllCustomDialogues();
+        }
+        private CustomDialogues LoadCustomDialogues(string customDialogsFilePath)
+        {
+            if (string.IsNullOrEmpty(customDialogsFilePath)) return new CustomDialogues();
+            if (!File.Exists(customDialogsFilePath)) return new CustomDialogues();
+
+            try
+            {
+                return new CustomDialogues(customDialogsFilePath);
+            }
+            catch (FileNotFoundException ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: カスタム対話文のファイル {LimitedCustomDialogsFilePath} が存在しません。スキップします。");
+                return new CustomDialogues();
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: カスタム対話文の読み込み中にエラー発生: {ex.Message}", LogLevel.Error);
+                throw new Exception($"カスタム対話文の読み込みに失敗しました。{customDialogsFilePath}", ex);
+            }
+        }
+        private void LoadAllCustomDialogues()
+        {
+            _limitedCustomDialogues = LoadCustomDialogues(LimitedCustomDialogsFilePath);
+            _YourCustomDialogues = LoadCustomDialogues(YourCustomDialogsFilePath);
+            _OpponentsCustomDialogues = LoadCustomDialogues(OpponentsCustomDialogsFilePath);
+            _OpponentsThirdCustomDialogues = LoadCustomDialogues(OpponentsThirdCustomDialogsFilePath);
+        }
+        private class DialogueTexts
+        {
+            public Dictionary<string, string> Map { get; }
+            public DialogueTexts(Dictionary<string, string> dialogues)
+            {
+                Map = dialogues;
+            }
+        }
+        private class DefaultPlayingDialogueTexts
+        {
+            public Dictionary<string, DialogueTexts> DialogueTextsForEvent { get; }
+            public DefaultPlayingDialogueTexts(Dictionary<string, DialogueTexts> playingDialoguesForEvent)
+            {
+                DialogueTextsForEvent = playingDialoguesForEvent;
+            }
+        }
+        private static readonly DialogueTexts LimitedDialogueTexts = 
+            new DialogueTexts(
+                new Dictionary<string, string>
+                {
+                    { DraftKey.Pick, "{name}をピック。"     },
+                    { DraftKey.Pack, "{pack}の{pick}。"     },
+                    { Verb.Mythic,   "神話レアは、{name}。" },
+                    { Verb.Rare,     "レアは、{name}。"     },
+                }
+            );
+        private static readonly DialogueTexts PlayingDefaultDialogueTextsForEvent = new DialogueTexts(
+            new Dictionary<string, string>()
+            {
+                { GameStage.Start,                "対戦よろしくお願いします。"       },
+                { GreMessageType.MulliganReq,     "マリガンチェック。"               },
+                { GameStage.GameOver,             "対戦ありがとうございました。"     },
+                { AnnotationType.NewTurnStarted,  "こちらのターン。"                 },
+                { AnnotationType.TokenCreated,    "{name}を生成。"                   },
+                { Verb.GainLife,                  "{diff}点回復して、ライフは{to}。" },
+                { Verb.LoseLife,                  "{diff}点受けて、ライフは{to}。"   },
+                { ZoneTransferCategory.CastSpell, "{name}をキャスト。"               },
+                { ZoneTransferCategory.Conjure,   "{name}を創出。"                   },
+                { ZoneTransferCategory.Discard,   "{name}をディスカード。"           },
+                { Verb.DrawKnownCard,             "{name}をドロー。"                 },
+                { Verb.DrawUnknownCard,           "ドロー。"                         },
+                { ZoneTransferCategory.Mill,      null }, // 実況しない
+                { ZoneTransferCategory.Nil,       null }, // 実況しない
+                { ZoneTransferCategory.PlayLand,  "{name}をプレイ。"                 },
+                { ZoneTransferCategory.Resolve,   null }, // 実況しない
+                { ZoneTransferCategory.Sacrifice, "{name}を生け贄に。"               },
+                // { ZoneTransferCategory.Warp, "{name}がワープ。" },   // キーワード能力。ToZoneに任せる。
+            }
+        );
+        private static readonly DialogueTexts PlayingDefaultDialogueTextsForDestZoneType = new DialogueTexts(
+            new Dictionary<string, string>()
+            {
+                { ZoneType.Revealed,    null }, // 実況しない
+                { ZoneType.Suppressed,  null }, // 実況しない
+                { ZoneType.Pending,     null }, // 実況しない
+                { ZoneType.Command,     "{name}を統率領域に。"   },
+                { ZoneType.Stack,       "{name}をキャスト。"     },
+                { ZoneType.Battlefield, "{name}が戦場に。"       },
+                { ZoneType.Exile,       "{name}が追放。"         },
+                { ZoneType.Limbo,       null }, // 実況しない
+                { ZoneType.Hand,        "{name}を手札に。"       },
+                { ZoneType.Library,     "{name}をライブラリに。" },
+                // { ZoneType.Graveyard, "{name}が墓地に。" },  // 墓地への移動は、カテゴリに応じて実況
+                { ZoneType.Sideboard,   null }, // 実況しない、というか通常ありえない
+            }
+        );
+        private static readonly DialogueTexts PlayingDefaultDialogueTextsForToGraveyard = new DialogueTexts(
+            new Dictionary<string, string>()
+            {
+                { ZoneTransferCategory.Destroy,           "{name}が破壊。"   },
+                // { ZoneTransferCategory.SBA_UnattachedAura, "{name}が墓地に。" },  // その他扱い
+                // { ZoneTransferCategory.SBA_ZeroLoyalty, "{name}が墓地に。" },     // その他扱い
+                { ZoneTransferCategory.SBA_Damage,        "{name}が死亡。"   },
+                { ZoneTransferCategory.SBA_Deathtouch,    "{name}が死亡。"   },
+                { ZoneTransferCategory.SBA_ZeroToughness, "{name}が死亡。"   }, // クリーチャーの死亡はひとまとめにしたい
+                { ZoneTransferCategory.Put,               "{name}を墓地に。" },
+                { ZoneTransferCategory.Surveil,           "{name}を墓地に。" }, // 「墓地に置く」と「諜報」はひとまとめにしたい
+                { "*",                                    "{name}が墓地に。" }, // その他のカテゴリ
+            }
+        );
+        private static readonly DialogueTexts PlayingDefaultDialogueThirdTextsForEvent = new DialogueTexts(
+    new Dictionary<string, string>()
+    {
+        { AnnotationType.NewTurnStarted,  "お相手のターン。"                    },
+        { AnnotationType.TokenCreated,    "お相手が{name}を生成。"              },
+        { Verb.GainLife,                  "{diff}点回復されて、ライフは{to}。"  },
+        { Verb.LoseLife,                  "{diff}点与えて、ライフは{to}。"      },
+        { ZoneTransferCategory.CastSpell, "お相手が{name}をキャスト。"          },
+        { ZoneTransferCategory.Conjure,   "お相手が{name}を創出。"              },
+        { ZoneTransferCategory.Discard,   "お相手が{name}をディスカード。"      },
+        { Verb.DrawKnownCard,             "お相手が{name}をドロー。"            },
+        { Verb.DrawUnknownCard,           "お相手がドロー。"                    },
+        { ZoneTransferCategory.Mill,      null }, // 実況しない
+        { ZoneTransferCategory.Nil,       null }, // 実況しない
+        { ZoneTransferCategory.PlayLand,  "お相手が{name}をプレイ。"            },
+        { ZoneTransferCategory.Resolve,   null }, // 実況しない
+        { ZoneTransferCategory.Sacrifice, "お相手が{name}を生け贄に。"          },
+        // { ZoneTransferCategory.Warp, "お相手の{name}がワープ。" },   // キーワード能力。ToZoneに任せる。
+    }
+);
+        private static readonly DialogueTexts PlayingDefaultDialogueThirdTextsForDestZoneType = new DialogueTexts(
+            new Dictionary<string, string>()
+            {
+                { ZoneType.Revealed,    null }, // 実況しない
+                { ZoneType.Suppressed,  null }, // 実況しない
+                { ZoneType.Pending,     null }, // 実況しない
+                { ZoneType.Command,     "お相手が{name}を統率領域に。"    },
+                { ZoneType.Stack,       "お相手が{name}をキャスト。"      },
+                { ZoneType.Battlefield, "お相手が{name}が戦場に。"        },
+                { ZoneType.Exile,       "お相手が{name}が追放。"          },
+                { ZoneType.Limbo,       null }, // 実況しない
+                { ZoneType.Hand,        "お相手が{name}を手札に。"        },
+                { ZoneType.Library,     "お相手が{name}をライブラリに。"  },
+                // { ZoneType.Graveyard, "{name}が墓地に。" },  // 墓地への移動は、カテゴリに応じて実況
+                { ZoneType.Sideboard,   null }, // 実況しない、というか通常ありえない
+            }
+        );
+        private static readonly DialogueTexts PlayingDefaultDialogueThirdTextsForToGraveyard = new DialogueTexts(
+            new Dictionary<string, string>()
+            {
+                { ZoneTransferCategory.Destroy,           "お相手の{name}が破壊。"    },
+                // { ZoneTransferCategory.SBA_UnattachedAura, "{name}が墓地に。" },  // その他扱い
+                // { ZoneTransferCategory.SBA_ZeroLoyalty, "{name}が墓地に。" },     // その他扱い
+                { ZoneTransferCategory.SBA_Damage,        "お相手の{name}が死亡。"    },
+                { ZoneTransferCategory.SBA_Deathtouch,    "お相手の{name}が死亡。"    },
+                { ZoneTransferCategory.SBA_ZeroToughness, "お相手の{name}が死亡。"    }, // クリーチャーの死亡はひとまとめにしたい
+                { ZoneTransferCategory.Put,               "お相手が{name}を墓地に。"  },
+                { ZoneTransferCategory.Surveil,           "お相手が{name}を墓地に。"  }, // 「墓地に置く」と「諜報」はひとまとめにしたい
+                { "*",                                    "お相手の{name}が墓地に。"  }, // その他のカテゴリ
+            }
+        );
+        private static readonly DefaultPlayingDialogueTexts YourTexts =
+            new DefaultPlayingDialogueTexts(
+                new Dictionary<string, DialogueTexts>()
+                {
+                    { TextKey.Event, PlayingDefaultDialogueTextsForEvent },
+                    { TextKey.DestZoneType, PlayingDefaultDialogueTextsForDestZoneType },
+                    { TextKey.ZoneTransferCategory, PlayingDefaultDialogueTextsForToGraveyard }
+                }
+            );
+        private static readonly DefaultPlayingDialogueTexts OpponentsTexts = YourTexts; // 対戦相手のデフォルト対話文は自分と同じ
+        private static readonly DefaultPlayingDialogueTexts OpponentsThirdTexts = new DefaultPlayingDialogueTexts(
+                new Dictionary<string, DialogueTexts>()
+                {
+                    { TextKey.Event, PlayingDefaultDialogueThirdTextsForEvent },
+                    { TextKey.DestZoneType, PlayingDefaultDialogueThirdTextsForDestZoneType },
+                    { TextKey.ZoneTransferCategory, PlayingDefaultDialogueThirdTextsForToGraveyard }
+                }
+            );
+
+        private string GetLimitedText(Event ev, CustomDialogues limitedCustomDialogues)
+        {
+            if (!limitedCustomDialogues.Map.ContainsKey(ev.Verb))   // そもそも定義されていなければデフォルトを返す
+                return LimitedDialogueTexts.Map[ev.Verb];
+            if (limitedCustomDialogues.GetMode(ev.Verb).IsNone())
+                return "";
+            if (limitedCustomDialogues.GetMode(ev.Verb).IsCustom())
+                return limitedCustomDialogues.GetText(ev.Verb);
+            return LimitedDialogueTexts.Map[ev.Verb];
+        }
+        private string GetPlayingText(Event ev, DefaultPlayingDialogueTexts defaultPlayingDialogues, CustomDialogues customDialogues)
+        {
+            if (defaultPlayingDialogues.DialogueTextsForEvent.ContainsKey(TextKey.Event) && defaultPlayingDialogues.DialogueTextsForEvent[TextKey.Event].Map.ContainsKey(ev.Verb))
+            {
+                if (!customDialogues.Map.ContainsKey(ev.Verb))   // そもそも定義されていなければデフォルトを返す
+                    return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.Event].Map[ev.Verb];
+                if (customDialogues.GetMode(ev.Verb).IsNone())
+                    return "";
+                if (customDialogues.GetMode(ev.Verb).IsCustom())
+                    return customDialogues.GetText(ev.Verb);
+                return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.Event].Map[ev.Verb];
+            }
+            if (defaultPlayingDialogues.DialogueTextsForEvent.ContainsKey(TextKey.DestZoneType) && defaultPlayingDialogues.DialogueTextsForEvent[TextKey.DestZoneType].Map.ContainsKey(ev.Dict[EventDictKey.To]))
+            {
+                if (!customDialogues.Map.ContainsKey(ev.Dict[EventDictKey.To]))   // そもそも定義されていなければデフォルトを返す
+                    return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.DestZoneType].Map[ev.Dict[EventDictKey.To]];
+                if (customDialogues.GetMode(ev.Dict[EventDictKey.To]).IsNone())
+                    return "";
+                if (customDialogues.GetMode(ev.Dict[EventDictKey.To]).IsCustom())
+                    return customDialogues.GetText(ev.Dict[EventDictKey.To]);
+                return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.DestZoneType].Map[ev.Dict[EventDictKey.To]];
+            }
+            if (defaultPlayingDialogues.DialogueTextsForEvent.ContainsKey(TextKey.ZoneTransferCategory) && ev.Dict[EventDictKey.To] == ZoneType.Graveyard)
+            {
+                if (!customDialogues.Map.ContainsKey(ev.Verb))   // そもそも定義されていなければデフォルトを返す
+                {
+                    if (defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map.ContainsKey(ev.Verb))
+                        return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map[ev.Verb];
+                    if (defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map.ContainsKey("*"))
+                        return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map["*"];
+                    return "";
+                }
+                if (customDialogues.GetMode(ev.Verb).IsNone())
+                    return "";
+                if (customDialogues.GetMode(ev.Verb).IsCustom())
+                    return customDialogues.GetText(ev.Verb);
+                if (defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map.ContainsKey(ev.Verb))
+                    return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map[ev.Verb];
+                if (defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map.ContainsKey("*"))
+                    return defaultPlayingDialogues.DialogueTextsForEvent[TextKey.ZoneTransferCategory].Map["*"];
+            }
+            return "";
+        }
+        private string GetText(Event ev)
+        {
+            switch (ev.PlayerWho)
+            {
+                case PlayerWho.You:
+                    if (LimitedDialogueTexts.Map.ContainsKey(ev.Verb))
+                        return GetLimitedText(ev, _limitedCustomDialogues);
+                    else
+                        return GetPlayingText(ev, YourTexts, _YourCustomDialogues);
+                case PlayerWho.Opponent:
+                    if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird)
+                        return GetPlayingText(ev, OpponentsThirdTexts, _OpponentsThirdCustomDialogues);
+                    else
+                        return GetPlayingText(ev, OpponentsTexts, _OpponentsCustomDialogues);
+            }
+            return "";
+        }
 
         public async Task Start(CancellationToken cancellationToken)
         {
@@ -24,15 +317,27 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: 開始");
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (EventQueue.Queue.TryDequeue(out string eventString))
+                    if (EventQueue.Queue.TryDequeue(out Event ev))
                     {
-                        ProcessEvent(eventString);
+                        try
+                        {
+                            string subject = ev.PlayerWho;
+                            if (string.IsNullOrEmpty(subject))
+                            {
+                                Logger.Instance.Log($"{this.GetType().Name}: イベントの主体が不明: {ev}", LogLevel.Error);
+                            }
+                            else
+                            {
+                                ProcessEvent(ev);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Instance.Log($"{this.GetType().Name}: イベントの処理中にエラー発生: {ex.Message} - {ev}", LogLevel.Error);
+                        }
+                        await Task.Delay(10, cancellationToken);
                     }
-                    else
-                    {
-                        // キューが空なら短い間隔で待機（ブロック）
-                        await Task.Delay(100, cancellationToken);
-                    }
+                    else await Task.Delay(100, cancellationToken);
                 }
                 Logger.Instance.Log($"{this.GetType().Name}: キャンセルされました");
             }
@@ -45,396 +350,13 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: エラー発生: {ex.Message}", LogLevel.Error);
             }
         }
-        private void ProcessEvent(string eventString)
+        private void ProcessEvent(Event ev)
         {
-            string subject = "";
-            string verb = "";
-            string[] tokens = SplitEventString(eventString);
-
-            // トークン数が2未満（verbが無い）ならエラー
-            if (tokens.Length < 2)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: {verb} イベントのトークン数が2未満: {eventString}", LogLevel.Error);
-                return;
-            }
-            subject = tokens[0];
-            verb = tokens[1];
-
-            // 特定のZoneTransferCategoryは無視する
-            if (IgnoreVerbs.Contains(verb))
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: 無視するアクション - {verb}", LogLevel.Debug);
-                return;
-            }
-
-            // トークン数 = 2
-            string dialogue = "";
-            switch (verb)
-            {
-                case GameStage.Start:
-                    dialogue = "対戦よろしくお願いします。";
-                    break;
-                case GreMessageType.MulliganReq:
-                    dialogue = "マリガンチェック。";
-                    break;
-                case GameStage.GameOver:
-                    dialogue = "対戦ありがとうございました。";
-                    break;
-                case TurnInfo.PhaseCombat:
-                    dialogue = "コンバット。";
-                    break;
-            }
-            if (!string.IsNullOrEmpty(dialogue))
-            {
-                EnqueueDialogue(subject, dialogue);
-                return;
-            }
-
-            // トークン数 = 3
-            if (tokens.Length < 3)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: {verb} イベントのトークン数が3未満: {eventString}", LogLevel.Error);
-                return;
-            }
-            switch (verb)
-            {
-                case DraftKey.Pick:
-                    if (!Program._config.SpeakerSettings.SpeakDraftPick) return;
-                    dialogue = $"{string.Join(" ", tokens.Skip(2))}をピック。";
-                    break;
-                case AnnotationType.NewTurnStarted:
-                    int turnNumber;
-                    try
-                    {
-                        turnNumber = int.Parse(tokens[2]);
-                    }
-                    catch (FormatException)
-                    {
-                        Logger.Instance.Log($"{this.GetType().Name}: ターン数の形式が不正: {tokens[2]}", LogLevel.Error);
-                        return;
-                    }
-                    if (turnNumber == 0)
-                    {
-                        // 0ターンの開始は無視（マリガンチェックなので）
-                        Logger.Instance.Log($"{this.GetType().Name}: 0ターンの開始は無視", LogLevel.Debug);
-                        return;
-                    }
-                    switch (subject)
-                    {
-                        case PlayerWho.You:
-                            dialogue = "こちらのターン。";
-                            break;
-                        case PlayerWho.Opponent:
-                            dialogue = Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird ? "お相手のターン。" : "こちらのターン。";
-                            break;
-                        default:
-                            Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤーのターン", LogLevel.Debug);
-                            break;
-                    }
-                    break;
-                case AnnotationType.TokenCreated:
-                    string tokenName = RemoveObjectiveDelimiters(tokens[2]);
-                    switch (subject)
-                    {
-                        case PlayerWho.You:
-                            dialogue = "";
-                            break;
-                        case PlayerWho.Opponent:
-                            dialogue = Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird ? "お相手が" : "";
-                            break;
-                        default:
-                            dialogue = "不明なプレイヤーが";
-                            Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤーがトークン生成: {eventString}", LogLevel.Debug);
-                            break;
-                    }
-                    dialogue += $"{tokenName}を生成。";
-                    break;
-            }
-            if (!string.IsNullOrEmpty(dialogue))
-            {
-                EnqueueDialogue(subject, dialogue);
-                return;
-            }
-
-            // トークン数 = 4
-            if (tokens.Length < 4)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: {verb} イベントのトークン数が4未満: {eventString}", LogLevel.Error);
-                return;
-            }
-            switch (verb)
-            {
-                case DraftKey.Pack:
-                    if (!Program._config.SpeakerSettings.SpeakDraftPick) return;
-                    int packNum = int.Parse(tokens[2]);
-                    int pickNum = int.Parse(tokens[3]);
-                    if (packNum < 1 || pickNum < 1)
-                    {
-                        Logger.Instance.Log($"{this.GetType().Name}: パック番号またはピック番号が不正: {eventString}", LogLevel.Error);
-                        return;
-                    }
-                    if (pickNum == 1)
-                    {
-                        dialogue = $"{packNum}パック目。";
-                    }
-                    else
-                    {
-                        dialogue = $"{packNum}の{pickNum}。";
-                    }
-                    break;
-                case DraftKey.DraftRarity:
-                    if (!Program._config.SpeakerSettings.SpeakDraftPick) return;
-                    int draftRarityNum = int.Parse(tokens[2]);
-                    switch (draftRarityNum)
-                    {
-                        case 5: // 神話レア
-                            dialogue = $"神話レアは、{string.Join(" ", tokens.Skip(3))}。";
-                            break;
-                        case 4: // レア
-                            dialogue = $"レアは、{string.Join(" ", tokens.Skip(3))}。";
-                            break;
-                        default:
-                            return;
-                    }
-                    break;
-                case SealedKey.SealedRarity:
-                    if (!Program._config.SpeakerSettings.SpeakSealedOpen) return;
-                    int sealedRarityNum = int.Parse(tokens[2]);
-                    switch (sealedRarityNum)
-                    {
-                        case 5: // 神話レア
-                            dialogue = $"神話レアは、{string.Join(" ", tokens.Skip(3))}。";
-                            break;
-                        case 4: // レア
-                            dialogue = $"レアは、{string.Join(" ", tokens.Skip(3))}。";
-                            break;
-                        default:
-                            return;
-                    }
-                    break;
-                case AnnotationType.ModifiedLife:   // ライフ増減
-                    int lifeDiff, lifeTotal;
-                    try
-                    {
-                        lifeDiff = int.Parse(tokens[2]);
-                        lifeTotal = int.Parse(tokens[3]);
-                    }
-                    catch (FormatException)
-                    {
-                        Logger.Instance.Log($"{this.GetType().Name}: {verb} ライフの形式が不正: {eventString}", LogLevel.Error);
-                        return;
-                    }
-                    // ライフの変更を処理
-                    switch (subject)
-                    {
-                        case PlayerWho.You:
-                            if (lifeDiff < 0)
-                            {
-                                dialogue = $"{Math.Abs(lifeDiff)}点受けて、ライフは{lifeTotal}。";
-                            }
-                            else
-                            {
-                                dialogue = $"{Math.Abs(lifeDiff)}点回復して、ライフは{lifeTotal}。";
-                            }
-                            break;
-                        case PlayerWho.Opponent:
-                            if (lifeDiff < 0)
-                            {
-                                if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird)
-                                {
-                                    dialogue = $"{Math.Abs(lifeDiff)}点与えて、お相手のライフは{lifeTotal}。";
-                                } else
-                                {
-                                    dialogue = $"{Math.Abs(lifeDiff)}点受けて、ライフは{lifeTotal}。";
-                                }
-                            }
-                            else
-                            {
-                                if (Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird)
-                                {
-                                    dialogue = $"{Math.Abs(lifeDiff)}点回復されて、お相手のライフは{lifeTotal}。";
-                                }
-                                else
-                                {
-                                    dialogue = $"{Math.Abs(lifeDiff)}点回復して、ライフは{lifeTotal}。";
-                                }
-                            }
-                            break;
-                        default:
-                            dialogue = $"不明なプレイヤーのライフが{lifeDiff}点変更。";
-                            Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤーのライフ変動: {eventString}", LogLevel.Debug);
-                            return;
-                    }
-                    break;
-            }
-            if (!string.IsNullOrEmpty(dialogue))
-            {
-                EnqueueDialogue(subject, dialogue);
-                return;
-            }
-
-            // トークン数 = 5（ゾーン間移動）
-            if (tokens.Length < 5)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: {verb} イベントのトークン数が5未満: {eventString}", LogLevel.Error);
-                return;
-            }
-            string objectName = RemoveObjectiveDelimiters(tokens[2]);
-            int zoneSrcId, zoneDestId;
-            try
-            {
-                zoneSrcId = int.Parse(tokens[3]);
-                zoneDestId = int.Parse(tokens[4]);
-            }
-            catch (FormatException)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: {verb} ゾーンIDの形式が不正: {eventString}", LogLevel.Error);
-                return;
-            }
-            switch (subject)
-            {
-                case PlayerWho.You:
-                    dialogue = "";
-                    break;
-                case PlayerWho.Opponent:
-                    dialogue = Program._config.SpeakerSettings.SpeakModes[PlayerWho.Opponent] == Config.Speaker.SpeakModeThird ? "お相手" : "";
-                    break;
-                default:
-                    dialogue = "不明なプレイヤー";
-                    Logger.Instance.Log($"{this.GetType().Name}: 不明なプレイヤーのアクション: {eventString}", LogLevel.Debug);
-                    break;
-            }
-            switch (verb)
-            {
-                // 特定のverbの場合は、移動先ゾーンに依らず決め打ちで実況
-                case ZoneTransferCategory.CastSpell:
-                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                    dialogue += $"{objectName}をキャスト。";
-                    break;
-                case ZoneTransferCategory.Conjure:
-                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                    dialogue += $"{objectName}を創出。";
-                    break;
-                case ZoneTransferCategory.Discard:
-                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                    dialogue += $"{objectName}をディスカード。";
-                    break;
-                case ZoneTransferCategory.Draw:
-                    if (subject != PlayerWho.You && objectName == Unknown.Name)
-                    {
-                        dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                        dialogue += $"ドロー。";
-                    }
-                    else
-                    {
-                        dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                        dialogue += $"{objectName}をドロー。";
-                    }
-                    break;
-                case ZoneTransferCategory.PlayLand:
-                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                    dialogue += $"{objectName}をプレイ。";
-                    break;
-                case ZoneTransferCategory.Sacrifice:
-                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                    dialogue += $"{objectName}を生け贄に。";
-                    break;
-                // 破壊や死亡は置換される可能性があるため、ここでは扱わない。
-                // ここからはキーワード能力
-                case ZoneTransferCategory.Warp:
-                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
-                    dialogue += $"{objectName}がワープ。";
-                    break;
-                default:
-                    // 特定verb以外は移動先ゾーンに応じて実況
-                    switch (zoneDestId)
-                    {
-                        case ZoneId.Command:
-                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                            dialogue += $"{objectName}を統率領域に。";
-                            break;
-                        case ZoneId.Stack:
-                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                            dialogue += $"{objectName}をキャスト。";
-                            break;
-                        case ZoneId.Battlefield:
-                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
-                            dialogue += $"{objectName}が戦場に。";
-                            break;
-                        case ZoneId.Exile:
-                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
-                            dialogue += $"{objectName}が追放。";
-                            // 発見や続唱による追放の実況はしたくない
-                            break;
-                        case ZoneId.Hand1:
-                        case ZoneId.Hand2:
-                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                            if (subject != PlayerWho.You && objectName == Unknown.Name)
-                            {
-                                objectName = "カード";
-                            }
-                            dialogue += $"{objectName}を手札に。";
-                            break;
-                        case ZoneId.Library1:
-                        case ZoneId.Library2:
-                            dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                            if (subject != PlayerWho.You && objectName == Unknown.Name)
-                            {
-                                objectName = "カード";
-                            }
-                            dialogue += $"{objectName}をライブラリに。";
-                            // 発見や続唱による追放領域から戻した場合の実況はしたくない
-                            break;
-                        case ZoneId.Graveyard1:
-                        case ZoneId.Graveyard2:
-                            // 墓地への移動は、カテゴリに応じて実況
-                            switch (verb)
-                            {
-                                case ZoneTransferCategory.Destroy:
-                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
-                                    dialogue += $"{objectName}が破壊。";
-                                    break;
-                                case ZoneTransferCategory.SBA_UnattachedAura:
-                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
-                                    dialogue += $"{objectName}が墓地に。";
-                                    break;
-                                case ZoneTransferCategory.SBA_Damage:
-                                case ZoneTransferCategory.SBA_Deathtouch:
-                                case ZoneTransferCategory.SBA_ZeroLoyalty:
-                                case ZoneTransferCategory.SBA_ZeroToughness:
-                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
-                                    dialogue += $"{objectName}が死亡。";
-                                    break;
-                                case ZoneTransferCategory.Put:
-                                case ZoneTransferCategory.Surveil:
-                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "が";
-                                    dialogue += $"{objectName}を墓地に。";
-                                    break;
-                                case ZoneTransferCategory.Mill:
-                                case ZoneTransferCategory.Nil:
-                                case ZoneTransferCategory.Resolve:
-                                    // 実況しない
-                                    Logger.Instance.Log($"{this.GetType().Name}: 実況しないアクション: {eventString}", LogLevel.Debug);
-                                    break;
-                                default:
-                                    dialogue += string.IsNullOrEmpty(dialogue) ? "" : "の";
-                                    dialogue += $"{objectName}が墓地に。";
-                                    break;
-                            }
-                            break;
-                        case ZoneId.Sideboard1:
-                        case ZoneId.Sideboard2:
-                            // 実況しない、というか通常ありえない
-                            Logger.Instance.Log($"{this.GetType().Name}: 実況しないアクション: {eventString}", LogLevel.Debug);
-                            break;
-                        default:
-                            // 不明なゾーンID
-                            Logger.Instance.Log($"{this.GetType().Name}: 不明なゾーンID: {zoneDestId} - {eventString}", LogLevel.Error);
-                            return;
-                    }
-                    break;
-            }
-            EnqueueDialogue(subject, dialogue);
+            string text = GetText(ev);
+            if (string.IsNullOrEmpty(text)) return;
+            Dialogue dialogue = new Dialogue(ev, text);
+            if (string.IsNullOrEmpty(dialogue.Content)) return;
+            DialogueQueue.Queue.Enqueue(dialogue);
         }
         private string[] SplitEventString(string eventString)
         {
@@ -478,18 +400,8 @@ namespace MayhemFamiliar
 
             return result.ToArray();
         }
-        private string RemoveObjectiveDelimiters(string objective)
-        {
-            // 目的語のデリミタを削除
-            return objective.Replace("\"", "");
-        }
-        private void EnqueueDialogue(string playerWho, string dialogue)
-        {
-            Logger.Instance.Log($"{this.GetType().Name}: {dialogue}", LogLevel.Debug);
-            DialogueQueue.Queue.Enqueue($"{playerWho} {dialogue}");
-        }
-        /*
-        private string ReplaceObjectiveDelimiters(string objective)
+
+        /* private string ReplaceObjectiveDelimiters(string objective)
         {
             if (CultureInfo.CurrentUICulture.Name == "ja-JP")
             {

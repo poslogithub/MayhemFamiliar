@@ -8,11 +8,11 @@ namespace MayhemFamiliar
 {
     internal static class Program
     {
+        public static Config _config;
+
         /// <summary>
         /// アプリケーションのメイン エントリ ポイントです。
         /// </summary>
-        public static Config _config;
-        
         [STAThread]
         static void Main(string[] args)
         {

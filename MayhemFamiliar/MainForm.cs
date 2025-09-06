@@ -26,7 +26,7 @@ namespace MayhemFamiliar
         private LogWatcher _logWatcer;
         private JsonParser _jsonParser;
         private DialogueGenerator _dialogueGenerator;
-        private Speaker _speaker;
+        private DialogueSpeaker _speaker;
         private CancellationTokenSource _ctsLogWatcher, _ctsJsonParser, _ctsDialogueGenerator, _ctsSpeaker;
         private Boolean _readFullLog = false;
 
@@ -404,7 +404,7 @@ namespace MayhemFamiliar
                         break;
                 }
             }
-            _speaker = new Speaker(synthesizers[PlayerWho.You], synthesizers[PlayerWho.Opponent]);
+            _speaker = new DialogueSpeaker(synthesizers[PlayerWho.You], synthesizers[PlayerWho.Opponent]);
 
             _ctsSpeaker = new CancellationTokenSource();
             Task.Run(() => _speaker.Start(_ctsSpeaker.Token));

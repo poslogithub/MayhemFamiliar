@@ -3,12 +3,10 @@ using MayhemFamiliar.QueueManager;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO.Ports;
+using System.Diagnostics.Eventing.Reader;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Media.Animation;
 
 namespace MayhemFamiliar
 {
@@ -76,25 +74,41 @@ namespace MayhemFamiliar
         };
         public static readonly Dictionary<int, string> ZoneTypes = new Dictionary<int, string>()
         {
-            { Revealed[1], "ZoneType_Revealed" },
-            { Revealed[2], "ZoneType_Revealed" },
-            { Suppressed, "ZoneType_Suppressed" },
-            { Pending, "ZoneType_Pending" },
-            { Command, "ZoneType_Command" },
-            { Stack, "ZoneType_Stack" },
-            { Battlefield, "ZoneType_Battlefield" },
-            { Exile, "ZoneType_Exile" },
-            { Limbo, "ZoneType_Limbo" },
-            { Hand[1], "ZoneType_Hand" },
-            { Hand[2], "ZoneType_Hand" },
-            { Library[1], "ZoneType_Library" },
-            { Library[2], "ZoneType_Library" },
-            { Graveyard[1], "ZoneType_Graveyard" },
-            { Graveyard[2], "GravZoneType_Graveyardeyard2" },
-            { Sideboard[1], "ZoneType_Sideboard" },
-            { Sideboard[2], "ZoneType_Sideboard" }
+            { Revealed[1], ZoneType.Revealed },
+            { Revealed[2], ZoneType.Revealed },
+            { Suppressed, ZoneType.Suppressed },
+            { Pending, ZoneType.Pending },
+            { Command, ZoneType.Command },
+            { Stack, ZoneType.Stack },
+            { Battlefield, ZoneType.Battlefield },
+            { Exile, ZoneType.Exile },
+            { Limbo, ZoneType.Limbo },
+            { Hand[1], ZoneType.Hand },
+            { Hand[2], ZoneType.Hand },
+            { Library[1], ZoneType.Library },
+            { Library[2], ZoneType.Library },
+            { Graveyard[1], ZoneType.Graveyard },
+            { Graveyard[2], ZoneType.Graveyard },
+            { Sideboard[1], ZoneType.Sideboard },
+            { Sideboard[2], ZoneType.Sideboard }
         };
     }
+    public static class ZoneType
+    {   
+        public const string Revealed = "ZoneType_Revealed";
+        public const string Suppressed = "ZoneType_Suppressed";
+        public const string Pending = "ZoneType_Pending";
+        public const string Command = "ZoneType_Command";
+        public const string Stack = "ZoneType_Stack";
+        public const string Battlefield = "ZoneType_Battlefield";
+        public const string Exile = "ZoneType_Exile";
+        public const string Limbo = "ZoneType_Limbo";
+        public const string Hand = "ZoneType_Hand";
+        public const string Library = "ZoneType_Library";
+        public const string Graveyard = "ZoneType_Graveyard";
+        public const string Sideboard = "ZoneType_Sideboard";
+    }
+
     static class GreMessageType
     {
         public const string GameStateMessage = "GREMessageType_GameStateMessage";
@@ -241,7 +255,6 @@ namespace MayhemFamiliar
         public const string GrpIds = "GrpIds";
         public const string Pack = "Pack";
         public const string Pick = "Pick";
-        public const string DraftRarity = "DraftRarity";
     }
     static class SealedKey
     {
@@ -251,7 +264,6 @@ namespace MayhemFamiliar
         public const string CurrentModule = "CurrentModule";
         public const string DeckSelect = "DeckSelect";
         public const string CardPool = "CardPool";
-        public const string SealedRarity = "SealedRarity";
     }
     static class Key
     {
@@ -464,6 +476,28 @@ namespace MayhemFamiliar
             NextPhase = "";
         }
     }
+    internal class EventDictKey
+    {
+        public const string Name = "name";
+        public const string From = "from";
+        public const string To =   "to";
+        public const string Diff = "diff";
+        public const string Pack = "pack";
+        public const string Pick = "pick";
+    }
+    internal class Event
+    {
+        public string PlayerWho { get; }
+        public string Verb { get; }
+        public Dictionary<string, string> Dict { get; }
+        public Event(string playerWho, string verb, Dictionary<string, string> dict = null)
+        {
+            PlayerWho = playerWho;
+            Verb = verb;
+            if (dict == null) Dict = new Dictionary<string, string>();
+            else Dict = dict;
+        }
+    }
     internal class JsonParser
     {
         private readonly string _cardDatabaseFile;
@@ -502,15 +536,12 @@ namespace MayhemFamiliar
             {
                 try
                 {
-                    if (JsonQueue.Queue.TryDequeue(out string jsonString))
+                    if (JsonQueue.Queue.TryDequeue(out JObject json))
                     {
-                        ProcessJson(jsonString);
+                        ProcessJson(json);
+                        await Task.Delay(10, cancellationToken);
                     }
-                    else
-                    {
-                        // キューが空なら短い間隔で待機（ブロック）
-                        await Task.Delay(100, cancellationToken);
-                    }
+                    else await Task.Delay(100, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -523,21 +554,8 @@ namespace MayhemFamiliar
             }
         }
 
-        private void ProcessJson(string jsonString)
+        private void ProcessJson(JObject json)
         {
-            // JSONパース
-            JObject json = null;
-            try
-            {
-                json = JObject.Parse(jsonString);
-            }
-            catch (Exception ex)
-            {
-                Logger.Instance.Log($"{this.GetType().Name}: JSON文字列のパース中に例外が発生", LogLevel.Error);
-                Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}", LogLevel.Error);
-                return;
-            }
-
             // 空なら即帰る
             if (json == null) return;
 
@@ -545,9 +563,10 @@ namespace MayhemFamiliar
             if (json[DraftKey.draftId] != null)
             {
                 // ドラフトパック
-                int pack = (int)(json[DraftKey.SelfPack] ?? -1);
-                int pick = (int)(json[DraftKey.SelfPick] ?? -1);
-                EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.Pack} {pack} {pick}");
+                string pack = (json[DraftKey.SelfPack].ToString() ?? "");
+                string pick = (json[DraftKey.SelfPick].ToString() ?? "");
+                EventQueue.Queue.Enqueue(new Event(PlayerWho.You, DraftKey.Pack, 
+                    new Dictionary<string, string>() { { EventDictKey.Pack, pack }, { EventDictKey.Pick, pick } } ) );
                 string packCards = json[DraftKey.PackCards].ToString();
                 List<int> grpIds = new List<int>();
                 foreach (string card in packCards.Split(','))
@@ -573,11 +592,13 @@ namespace MayhemFamiliar
                 }
                 if (mythicCardNames.Count > 0)
                 {
-                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.DraftRarity} 5 {string.Join(" ", mythicCardNames)}");
+                    EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Mythic,
+                        new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", mythicCardNames) } } ) );
                 }
                 if (rareCardNames.Count > 0)
                 {
-                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.DraftRarity} 4 {string.Join(" ", rareCardNames)}");
+                    EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Rare,
+                        new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", rareCardNames) } } ) );
                 }
                 return;
             }
@@ -608,7 +629,8 @@ namespace MayhemFamiliar
                     string cardName = _cardData.GetCardNameByGrpId(grpId);
                     cardNames.Add(cardName);
                 }
-                EventQueue.Queue.Enqueue($"{PlayerWho.You} {DraftKey.Pick} {string.Join(" ", cardNames)}");
+                EventQueue.Queue.Enqueue(new Event(PlayerWho.You, DraftKey.Pick, 
+                    new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", cardNames) } } ) );
                 return;
             }
 
@@ -644,11 +666,13 @@ namespace MayhemFamiliar
                         }
                         if (mythicCardNames.Count > 0)
                         {
-                            EventQueue.Queue.Enqueue($"{PlayerWho.You} {SealedKey.SealedRarity} 5 {string.Join(" ", mythicCardNames)}");
+                            EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Mythic,
+                                new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", mythicCardNames) } } ) );
                         }
                         if (rareCardNames.Count > 0)
                         {
-                            EventQueue.Queue.Enqueue($"{PlayerWho.You} {SealedKey.SealedRarity} 4 {string.Join(" ", rareCardNames)}");
+                            EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Rare,
+                                 new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", rareCardNames) } } ) );
                         }
                     }
                 }
@@ -717,7 +741,7 @@ namespace MayhemFamiliar
                     break;
                 case GreMessageType.MulliganReq:
                     Logger.Instance.Log($"{this.GetType().Name}: GREMessageType_MulliganReq");
-                    EventQueue.Queue.Enqueue($"{PlayerWho.You} {GreMessageType.MulliganReq}");
+                    EventQueue.Queue.Enqueue(new Event(PlayerWho.You, GreMessageType.MulliganReq));
                     break;
                 case GreMessageType.GameStateMessage:
                 case GreMessageType.QueuedGameStateMessage:
@@ -788,7 +812,7 @@ namespace MayhemFamiliar
             if (gameInfo[Key.Stage]?.ToString() == GameStage.Start)
             {
                 Logger.Instance.Log($"{this.GetType().Name}: ゲーム開始");
-                EventQueue.Queue.Enqueue($"{PlayerWho.You} {GameStage.Start}");
+                EventQueue.Queue.Enqueue(new Event(PlayerWho.You, GameStage.Start));
             }
 
             // ゲーム終了連絡
@@ -796,7 +820,7 @@ namespace MayhemFamiliar
                 gameInfo[MatchState.Key]?.ToString() == MatchState.GameComplete)
             {
                 Logger.Instance.Log($"{this.GetType().Name}: ゲーム終了");
-                EventQueue.Queue.Enqueue($"{PlayerWho.You} {GameStage.GameOver}");
+                EventQueue.Queue.Enqueue(new Event(PlayerWho.You, GameStage.GameOver));
             }
         }
         private void ProcessPlayers(JToken players)
@@ -879,25 +903,52 @@ namespace MayhemFamiliar
                                         _gameObjects[affectedId].ControllerSeatId);
                                 }
                                 Logger.Instance.Log($"{this.GetType().Name}: トークン生成 - id: {affectedId}, {_gameObjects[affectedId].GetDescription()}", LogLevel.Debug);
-                                EventQueue.Queue.Enqueue($"{GetPlayerWho(_gameObjects[affectedId].ControllerSeatId)} {annotationType} \"{_gameObjects[affectedId].Name}\"");
+                                EventQueue.Queue.Enqueue(new Event(
+                                    GetPlayerWho(_gameObjects[affectedId].ControllerSeatId), annotationType,
+                                    new Dictionary<string, string>() { { EventDictKey.Name, _gameObjects[affectedId].Name } } ) );
                             }
                             break;
                         }
                     case AnnotationType.NewTurnStarted:
                         Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(affectorId)} のターン開始: {_turnInfo.TurnNumber}", LogLevel.Debug);
-                        EventQueue.Queue.Enqueue($"{GetPlayerWho(affectorId)} {AnnotationType.NewTurnStarted} {_turnInfo.TurnNumber}");
+                        if (_turnInfo.TurnNumber == 0)
+                        {
+                            Logger.Instance.Log($"{this.GetType().Name}: 0ターン目の開始は無視", LogLevel.Debug);
+                            break;
+                        }
+                        EventQueue.Queue.Enqueue(new Event(
+                            GetPlayerWho(affectorId), AnnotationType.NewTurnStarted,
+                            new Dictionary<string, string>() { { EventDictKey.To, _turnInfo.TurnNumber.ToString() } } ) );
                         break;
                     case AnnotationType.ModifiedLife:
                         int lifeDiff = (int)(annotation[Key.Details][0][Key.ValueInt32][0] ?? 0);
                         if (lifeDiff == 0) break;
                         foreach (int affectedId in affectedIds)
                         {
-                            var player = GetPlayer(affectedId);
+                            Player player = GetPlayer(affectedId);
                             if (player == null) continue;
                             Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(affectedId)} のライフ変動: {player.Life} -> {player.Life + lifeDiff}", LogLevel.Debug);
+                            int lifeBefore = player.Life;
                             player.Life += lifeDiff;
-                            EventQueue.Queue.Enqueue($"{GetPlayerWho(affectedId)} {AnnotationType.ModifiedLife} {lifeDiff} {player.Life}");
-                        }
+                            if (lifeDiff > 0)
+                            {
+                                EventQueue.Queue.Enqueue(new Event(
+                                    GetPlayerWho(affectedId), Verb.GainLife,
+                                    new Dictionary<string, string>() {
+                                        { EventDictKey.From, lifeBefore.ToString() },
+                                        { EventDictKey.Diff, Math.Abs(lifeDiff).ToString() },
+                                        { EventDictKey.To, player.Life.ToString() } } ) );
+                            }
+                            else
+                            {
+                                EventQueue.Queue.Enqueue(new Event(
+                                    GetPlayerWho(affectedId), Verb.LoseLife,
+                                    new Dictionary<string, string>() {
+                                        { EventDictKey.From, lifeBefore.ToString() },
+                                        { EventDictKey.Diff, Math.Abs(lifeDiff).ToString() },
+                                        { EventDictKey.To, player.Life.ToString() } } ) );
+                            }
+                }
                         break;
                     case AnnotationType.ZoneTransfer
                         when annotation[Key.Details] != null:
@@ -930,14 +981,26 @@ namespace MayhemFamiliar
                                     int actorSeatId = GetSeatIdByZoneId(zoneSrcId, zoneDestId);
                                     playerWho = GetPlayerWho(actorSeatId);
                                 }
-                                /*
-                                if (_gameObjects.ContainsKey(affectedId))
+                                string srcZoneType = ZoneId.ZoneTypes[zoneSrcId];
+                                string destZoneType = ZoneId.ZoneTypes[zoneDestId];
+                                if (zoneTransferCategory == ZoneTransferCategory.Draw)
                                 {
-                                    _gameObjects[affectedId].ZoneId = zoneDestId;
+                                    if (_gameObjects[affectedId].Name == Unknown.Name)
+                                    {
+                                        zoneTransferCategory = Verb.DrawUnknownCard;
+                                    }
+                                    else
+                                    {
+                                        zoneTransferCategory = Verb.DrawKnownCard;
+                                    }
                                 }
-                                */
-                                Logger.Instance.Log($"{this.GetType().Name}: {playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\" {zoneSrcId} {zoneDestId}", LogLevel.Debug);
-                                EventQueue.Queue.Enqueue($"{playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\" {zoneSrcId} {zoneDestId}");
+
+                                Logger.Instance.Log($"{this.GetType().Name}: {playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\" {srcZoneType} {destZoneType}", LogLevel.Debug);
+                                EventQueue.Queue.Enqueue(new Event(playerWho, zoneTransferCategory,
+                                    new Dictionary<string, string>() {
+                                        { EventDictKey.Name, _gameObjects[affectedId].Name },
+                                        { EventDictKey.From, srcZoneType },
+                                        { EventDictKey.To,   destZoneType} } ) );
                             }
                             break;
                         }
@@ -965,7 +1028,8 @@ namespace MayhemFamiliar
                 if (_turnInfo.TurnNumber == 0 && newTurnNumber == 1)
                 {
                     Logger.Instance.Log($"{this.GetType().Name}: {GetPlayerWho(newActivePlayer)} のターン開始: {newTurnNumber}", LogLevel.Debug);
-                    EventQueue.Queue.Enqueue($"{GetPlayerWho(newActivePlayer)} {AnnotationType.NewTurnStarted} {newTurnNumber}");
+                    EventQueue.Queue.Enqueue(new Event(GetPlayerWho(newActivePlayer), AnnotationType.NewTurnStarted,
+                        new Dictionary<string, string>() { { EventDictKey.To, newTurnNumber.ToString() } } ) );
                 }
                 if (_turnInfo.Phase == TurnInfo.PhaseCombat &&
                     _turnInfo.Step == TurnInfo.StepDeclareBlock &&

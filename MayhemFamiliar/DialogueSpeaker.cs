@@ -11,16 +11,13 @@ using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
-using static MayhemFamiliar.Config;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace MayhemFamiliar
 {
-    internal class Speaker
+    internal class DialogueSpeaker
     {
         private Dictionary<string, ISynthesizer> _synthesizers = new Dictionary<string, ISynthesizer>();
-        public Speaker(ISynthesizer synthesizerYou, ISynthesizer synthesizerOpponent)
+        public DialogueSpeaker(ISynthesizer synthesizerYou, ISynthesizer synthesizerOpponent)
         {
             _synthesizers[PlayerWho.You] = synthesizerYou;
             _synthesizers[PlayerWho.Opponent] = synthesizerOpponent;
@@ -32,9 +29,9 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: 開始");
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (DialogueQueue.Queue.TryDequeue(out string dialogue))
+                    if (DialogueQueue.Queue.TryDequeue(out Dialogue dialogue))
                     {
-                        InitProcessDialog(dialogue);
+                        ProcessDialogue(dialogue);
                     }
                     else
                     {
@@ -53,28 +50,19 @@ namespace MayhemFamiliar
                 Logger.Instance.Log($"{this.GetType().Name}: エラー発生: {ex.Message}");
             }
         }
-        private void InitProcessDialog(string dialogue)
+        private void ProcessDialogue(Dialogue dialogue)
         {
-            string playerWho = PlayerWho.Unknown;
-            if (dialogue.StartsWith(PlayerWho.You))
-            {
-                playerWho = PlayerWho.You;
-            }
-            else if (dialogue.StartsWith(PlayerWho.Opponent))
-            {
-                playerWho = PlayerWho.Opponent;
-            }
+            string playerWho = dialogue.PlayerWho;
 
             if (playerWho != PlayerWho.Unknown)
             { 
-                dialogue = Regex.Replace(dialogue, $"^{playerWho} ", "");
                 if (Program._config.SpeakerSettings.SpeakModes[playerWho] != Config.Speaker.SpeakModeOff)
                 {
-                    _synthesizers[playerWho].ProcessDialogue(dialogue);
+                    _synthesizers[playerWho].ProcessDialogue(dialogue.Content);
                 }
                 if (Program._config.YukaConneNEOSettings.Enabled)
                 {
-                    Task.Run(() => SendTextToYukaConneNEOAsync(dialogue));
+                    Task.Run(() => SendTextToYukaConneNEOAsync(dialogue.Content));
                 }
             }
             else
