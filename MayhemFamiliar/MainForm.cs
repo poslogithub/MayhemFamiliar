@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,6 +12,14 @@ namespace MayhemFamiliar
 {
     public partial class MainForm : Form
     {
+        private class Url
+        {
+            public const string CustomYourAction = "https://poslogithub.github.io/MayhemFamiliarCustom/your-action.html";
+            public const string CustomOpponentsAction = "https://poslogithub.github.io/MayhemFamiliarCustom/opponent-action.html";
+            public const string CustomOpponentsThirdAction = "https://poslogithub.github.io/MayhemFamiliarCustom/opponent-third-action.html";
+            public const string CustomLimited = "https://poslogithub.github.io/MayhemFamiliarCustom/limited.html";
+        }
+
         // UI用
         private Dictionary<string, ComboBox> _comboBoxSynthesizers = new Dictionary<string, ComboBox>();
         private Dictionary<string, Button> _buttonTestSpeaks = new Dictionary<string, Button>();
@@ -574,6 +583,27 @@ namespace MayhemFamiliar
             }
             return cardDatabaseFile;
         }
+
+        private void linkLabelCustomYourAction_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start(Url.CustomYourAction);
+        }
+
+        private void linkLabelCustomOpponentsAction_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start(Url.CustomOpponentsAction);
+        }
+
+        private void linkLabelCustomOpponentsThirdAction_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start(Url.CustomOpponentsThirdAction);
+        }
+
+        private void linkLabelCustomLimited_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start(Url.CustomLimited);
+        }
+
         private string GetCardDatabaseFilePath()
         {
             string cardDatabaseDirectoryPath = Program._config.MtgArenaSettings?.CardDatabaseDirectoryPath ?? DefaultValue.CardDatabaseDirectory;
