@@ -101,7 +101,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CardData.cs" />
-    <Compile Include="CustomDialogues.cs" />
+    <Compile Include="CustomDialogueTexts.cs" />
     <Compile Include="YukaConneNEO.cs" />
     <Compile Include="UpdateChecker.cs" />
     <Compile Include="Config.cs" />

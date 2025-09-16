@@ -3,7 +3,6 @@ using MayhemFamiliar.QueueManager;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -368,21 +367,20 @@ namespace MayhemFamiliar
         public const string SBA_UnattachedAura = "SBA_UnattachedAura";
         public const string Destroy = "Destroy";
         public const string Nil = "nil";   // Fizzった
-        public static Boolean IsActive(string category)
+        public static Boolean Die(string category)
         {
-            return category == CastSpell ||
-                   category == Conjure ||
-                   category == Discard ||
-                   category == Draw ||
-                   category == Exile ||
-                   category == Mill ||
-                   category == PlayLand ||
-                   category == Put ||
-                   category == Sacrifice ||
-                   category == Resolve ||
-                   category == Return;
+            if (category == SBA_Damage) return true;
+            if (category == SBA_Deathtouch) return true;
+            if (category == SBA_ZeroToughness) return true;
+            return false;
         }
-}
+        public static Boolean PutGraveyard(string category)
+        {
+            if (category == Put) return true;
+            if (category == Surveil) return true;
+            return false;
+        }
+    }
     public static class PlayerWho
     {
         public const string You = "You";
@@ -593,12 +591,12 @@ namespace MayhemFamiliar
                 if (mythicCardNames.Count > 0)
                 {
                     EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Mythic,
-                        new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", mythicCardNames) } } ) );
+                        new Dictionary<string, string>() { { EventDictKey.Name, string.Join("　", mythicCardNames) } } ) );
                 }
                 if (rareCardNames.Count > 0)
                 {
                     EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Rare,
-                        new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", rareCardNames) } } ) );
+                        new Dictionary<string, string>() { { EventDictKey.Name, string.Join("　", rareCardNames) } } ) );
                 }
                 return;
             }
@@ -630,7 +628,7 @@ namespace MayhemFamiliar
                     cardNames.Add(cardName);
                 }
                 EventQueue.Queue.Enqueue(new Event(PlayerWho.You, DraftKey.Pick, 
-                    new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", cardNames) } } ) );
+                    new Dictionary<string, string>() { { EventDictKey.Name, string.Join("　", cardNames) } } ) );
                 return;
             }
 
@@ -667,12 +665,12 @@ namespace MayhemFamiliar
                         if (mythicCardNames.Count > 0)
                         {
                             EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Mythic,
-                                new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", mythicCardNames) } } ) );
+                                new Dictionary<string, string>() { { EventDictKey.Name, string.Join("　", mythicCardNames) } } ) );
                         }
                         if (rareCardNames.Count > 0)
                         {
                             EventQueue.Queue.Enqueue(new Event(PlayerWho.You, Verb.Rare,
-                                 new Dictionary<string, string>() { { EventDictKey.Name, string.Join(" ", rareCardNames) } } ) );
+                                 new Dictionary<string, string>() { { EventDictKey.Name, string.Join("　", rareCardNames) } } ) );
                         }
                     }
                 }
@@ -983,20 +981,24 @@ namespace MayhemFamiliar
                                 }
                                 string srcZoneType = ZoneId.ZoneTypes[zoneSrcId];
                                 string destZoneType = ZoneId.ZoneTypes[zoneDestId];
+                                string verb = zoneTransferCategory;
                                 if (zoneTransferCategory == ZoneTransferCategory.Draw)
                                 {
                                     if (_gameObjects[affectedId].Name == Unknown.Name)
-                                    {
-                                        zoneTransferCategory = Verb.DrawUnknownCard;
-                                    }
+                                        verb = Verb.DrawUnknownCard;
                                     else
-                                    {
-                                        zoneTransferCategory = Verb.DrawKnownCard;
-                                    }
+                                        verb = Verb.DrawKnownCard;
+                                }
+                                else if (destZoneType == ZoneType.Graveyard)
+                                {
+                                    if (ZoneTransferCategory.Die(zoneTransferCategory))
+                                        verb = Verb.Die;
+                                    else if (ZoneTransferCategory.PutGraveyard(zoneTransferCategory))
+                                        verb = Verb.PutGraveyard;
                                 }
 
-                                Logger.Instance.Log($"{this.GetType().Name}: {playerWho} {zoneTransferCategory} \"{_gameObjects[affectedId].Name}\" {srcZoneType} {destZoneType}", LogLevel.Debug);
-                                EventQueue.Queue.Enqueue(new Event(playerWho, zoneTransferCategory,
+                                Logger.Instance.Log($"{this.GetType().Name}: {playerWho} {verb} \"{_gameObjects[affectedId].Name}\" {srcZoneType} {destZoneType}", LogLevel.Debug);
+                                EventQueue.Queue.Enqueue(new Event(playerWho, verb,
                                     new Dictionary<string, string>() {
                                         { EventDictKey.Name, _gameObjects[affectedId].Name },
                                         { EventDictKey.From, srcZoneType },
