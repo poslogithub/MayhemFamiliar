@@ -2,7 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
 
-namespace MayhemFamiliar.QueueManager
+namespace MayhemFamiliar.Queues
 {
     // LogTailer -> JsonParser
     internal static class JsonQueue
@@ -21,5 +21,4 @@ namespace MayhemFamiliar.QueueManager
     {
         public static ConcurrentQueue<Dialogue> Queue { get; } = new ConcurrentQueue<Dialogue>();
     }
-
 }

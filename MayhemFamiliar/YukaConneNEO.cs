@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MayhemFamiliar.Logging;
+using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 

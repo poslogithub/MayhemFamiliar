@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MayhemFamiliar.Logging;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+
 namespace MayhemFamiliar
 {
     public partial class MainForm : Form
@@ -456,7 +458,7 @@ namespace MayhemFamiliar
             {
                 textBoxLog.Invoke(new Action(() =>
                 {
-                    textBoxLog.AppendText($"{DateTime.Now:HH:mm:ss} - {message}{Environment.NewLine}");
+                    textBoxLog.AppendText($"{message}{Environment.NewLine}");
                     textBoxLog.SelectionStart = textBoxLog.TextLength;
                     textBoxLog.ScrollToCaret();
                 }));
@@ -464,7 +466,7 @@ namespace MayhemFamiliar
             }
             else
             {
-                textBoxLog.AppendText($"{DateTime.Now:HH:mm:ss} - {message}{Environment.NewLine}");
+                textBoxLog.AppendText($"{message}{Environment.NewLine}");
                 textBoxLog.SelectionStart = textBoxLog.TextLength;
                 textBoxLog.ScrollToCaret();
             }

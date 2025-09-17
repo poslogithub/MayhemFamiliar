@@ -101,7 +101,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CardData.cs" />
-    <Compile Include="CustomDialogueTexts.cs" />
     <Compile Include="YukaConneNEO.cs" />
     <Compile Include="UpdateChecker.cs" />
     <Compile Include="Config.cs" />
@@ -115,11 +114,11 @@
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
     <Compile Include="JsonParser.cs" />
-    <Compile Include="Logger.cs" />
+    <Compile Include="Log\Logger.cs" />
     <Compile Include="LogWatcher.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Queue.cs" />
+    <Compile Include="QueueManager\Queue.cs" />
     <Compile Include="DialogueSpeaker.cs" />
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.cs</DependentUpon>
@@ -166,6 +165,14 @@
     <Content Include="THIRD-PARTY-NOTICES.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="CardData\" />
+    <Folder Include="Config\" />
+    <Folder Include="DialogueGenerator\" />
+    <Folder Include="DialogueSpeaker\" />
+    <Folder Include="JsonParser\" />
+    <Folder Include="LogWatcher\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

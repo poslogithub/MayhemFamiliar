@@ -1,4 +1,5 @@
-﻿using MayhemFamiliar.QueueManager;
+﻿using MayhemFamiliar.Logging;
+using MayhemFamiliar.Queues;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
