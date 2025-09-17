@@ -35,10 +35,13 @@
             this.checkBoxDraft = new System.Windows.Forms.CheckBox();
             this.listBoxOpponentsVoices = new System.Windows.Forms.ListBox();
             this.groupBoxOpponentsSpeakMode = new System.Windows.Forms.GroupBox();
+            this.linkLabelCustomOpponentsThirdAction = new System.Windows.Forms.LinkLabel();
+            this.linkLabelCustomOpponentsAction = new System.Windows.Forms.LinkLabel();
             this.radioButtonOpponentsSpeakModeOff = new System.Windows.Forms.RadioButton();
             this.radioButtonOpponentsSpeakModeThird = new System.Windows.Forms.RadioButton();
             this.radioButtonOpponentsSpeakModeOn = new System.Windows.Forms.RadioButton();
             this.groupBoxYourSpeakMode = new System.Windows.Forms.GroupBox();
+            this.linkLabelCustomYourAction = new System.Windows.Forms.LinkLabel();
             this.radioButtonYourSpeakModeOff = new System.Windows.Forms.RadioButton();
             this.radioButtonYourSpeakModeOn = new System.Windows.Forms.RadioButton();
             this.groupBoxOpponentsSynthesizer = new System.Windows.Forms.GroupBox();
@@ -50,12 +53,13 @@
             this.buttonYourTestSpeak = new System.Windows.Forms.Button();
             this.tabPageTool = new System.Windows.Forms.TabPage();
             this.groupBoxYukaConneNEO = new System.Windows.Forms.GroupBox();
+            this.label1 = new System.Windows.Forms.Label();
             this.labelYukaConneNEOPort = new System.Windows.Forms.Label();
             this.textBoxYukaConneNEOPort = new System.Windows.Forms.TextBox();
             this.checkBoxUseYukaConneNEO = new System.Windows.Forms.CheckBox();
             this.tabPageLog = new System.Windows.Forms.TabPage();
             this.textBoxLog = new System.Windows.Forms.TextBox();
-            this.label1 = new System.Windows.Forms.Label();
+            this.linkLabelCustomLimited = new System.Windows.Forms.LinkLabel();
             this.tabControlMain.SuspendLayout();
             this.tabPageSpeaker.SuspendLayout();
             this.groupBoxOpponentsSpeakMode.SuspendLayout();
@@ -81,6 +85,7 @@
             // 
             // tabPageSpeaker
             // 
+            this.tabPageSpeaker.Controls.Add(this.linkLabelCustomLimited);
             this.tabPageSpeaker.Controls.Add(this.checkBoxSealed);
             this.tabPageSpeaker.Controls.Add(this.checkBoxDraft);
             this.tabPageSpeaker.Controls.Add(this.listBoxOpponentsVoices);
@@ -128,6 +133,8 @@
             // 
             // groupBoxOpponentsSpeakMode
             // 
+            this.groupBoxOpponentsSpeakMode.Controls.Add(this.linkLabelCustomOpponentsThirdAction);
+            this.groupBoxOpponentsSpeakMode.Controls.Add(this.linkLabelCustomOpponentsAction);
             this.groupBoxOpponentsSpeakMode.Controls.Add(this.radioButtonOpponentsSpeakModeOff);
             this.groupBoxOpponentsSpeakMode.Controls.Add(this.radioButtonOpponentsSpeakModeThird);
             this.groupBoxOpponentsSpeakMode.Controls.Add(this.radioButtonOpponentsSpeakModeOn);
@@ -137,6 +144,28 @@
             this.groupBoxOpponentsSpeakMode.TabIndex = 5;
             this.groupBoxOpponentsSpeakMode.TabStop = false;
             this.groupBoxOpponentsSpeakMode.Text = "対戦相手のアクション";
+            // 
+            // linkLabelCustomOpponentsThirdAction
+            // 
+            this.linkLabelCustomOpponentsThirdAction.AutoSize = true;
+            this.linkLabelCustomOpponentsThirdAction.Location = new System.Drawing.Point(124, 42);
+            this.linkLabelCustomOpponentsThirdAction.Name = "linkLabelCustomOpponentsThirdAction";
+            this.linkLabelCustomOpponentsThirdAction.Size = new System.Drawing.Size(59, 12);
+            this.linkLabelCustomOpponentsThirdAction.TabIndex = 10;
+            this.linkLabelCustomOpponentsThirdAction.TabStop = true;
+            this.linkLabelCustomOpponentsThirdAction.Text = "カスタマイズ";
+            this.linkLabelCustomOpponentsThirdAction.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabelCustomOpponentsThirdAction_LinkClicked);
+            // 
+            // linkLabelCustomOpponentsAction
+            // 
+            this.linkLabelCustomOpponentsAction.AutoSize = true;
+            this.linkLabelCustomOpponentsAction.Location = new System.Drawing.Point(78, 20);
+            this.linkLabelCustomOpponentsAction.Name = "linkLabelCustomOpponentsAction";
+            this.linkLabelCustomOpponentsAction.Size = new System.Drawing.Size(59, 12);
+            this.linkLabelCustomOpponentsAction.TabIndex = 8;
+            this.linkLabelCustomOpponentsAction.TabStop = true;
+            this.linkLabelCustomOpponentsAction.Text = "カスタマイズ";
+            this.linkLabelCustomOpponentsAction.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabelCustomOpponentsAction_LinkClicked);
             // 
             // radioButtonOpponentsSpeakModeOff
             // 
@@ -173,6 +202,7 @@
             // 
             // groupBoxYourSpeakMode
             // 
+            this.groupBoxYourSpeakMode.Controls.Add(this.linkLabelCustomYourAction);
             this.groupBoxYourSpeakMode.Controls.Add(this.radioButtonYourSpeakModeOff);
             this.groupBoxYourSpeakMode.Controls.Add(this.radioButtonYourSpeakModeOn);
             this.groupBoxYourSpeakMode.Location = new System.Drawing.Point(3, 6);
@@ -181,6 +211,17 @@
             this.groupBoxYourSpeakMode.TabIndex = 4;
             this.groupBoxYourSpeakMode.TabStop = false;
             this.groupBoxYourSpeakMode.Text = "自分のアクション";
+            // 
+            // linkLabelCustomYourAction
+            // 
+            this.linkLabelCustomYourAction.AutoSize = true;
+            this.linkLabelCustomYourAction.Location = new System.Drawing.Point(78, 20);
+            this.linkLabelCustomYourAction.Name = "linkLabelCustomYourAction";
+            this.linkLabelCustomYourAction.Size = new System.Drawing.Size(59, 12);
+            this.linkLabelCustomYourAction.TabIndex = 7;
+            this.linkLabelCustomYourAction.TabStop = true;
+            this.linkLabelCustomYourAction.Text = "カスタマイズ";
+            this.linkLabelCustomYourAction.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabelCustomYourAction_LinkClicked);
             // 
             // radioButtonYourSpeakModeOff
             // 
@@ -295,6 +336,15 @@
             this.groupBoxYukaConneNEO.TabStop = false;
             this.groupBoxYukaConneNEO.Text = "ゆかりねっとコネクターNEO";
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(6, 68);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(369, 12);
+            this.label1.TabIndex = 3;
+            this.label1.Text = "ゆかコネNEO > ︙ > 動作状況 > Communication Port > HTTP(NEO-API)";
+            // 
             // labelYukaConneNEOPort
             // 
             this.labelYukaConneNEOPort.AutoSize = true;
@@ -343,14 +393,16 @@
             this.textBoxLog.Size = new System.Drawing.Size(786, 418);
             this.textBoxLog.TabIndex = 0;
             // 
-            // label1
+            // linkLabelCustomLimited
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(6, 68);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(369, 12);
-            this.label1.TabIndex = 3;
-            this.label1.Text = "ゆかコネNEO > ︙ > 動作状況 > Communication Port > HTTP(NEO-API)";
+            this.linkLabelCustomLimited.AutoSize = true;
+            this.linkLabelCustomLimited.Location = new System.Drawing.Point(154, 89);
+            this.linkLabelCustomLimited.Name = "linkLabelCustomLimited";
+            this.linkLabelCustomLimited.Size = new System.Drawing.Size(59, 12);
+            this.linkLabelCustomLimited.TabIndex = 11;
+            this.linkLabelCustomLimited.TabStop = true;
+            this.linkLabelCustomLimited.Text = "カスタマイズ";
+            this.linkLabelCustomLimited.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabelCustomLimited_LinkClicked);
             // 
             // MainForm
             // 
@@ -408,6 +460,10 @@
         private System.Windows.Forms.Label labelYukaConneNEOPort;
         private System.Windows.Forms.TextBox textBoxYukaConneNEOPort;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.LinkLabel linkLabelCustomYourAction;
+        private System.Windows.Forms.LinkLabel linkLabelCustomOpponentsAction;
+        private System.Windows.Forms.LinkLabel linkLabelCustomOpponentsThirdAction;
+        private System.Windows.Forms.LinkLabel linkLabelCustomLimited;
     }
 }
 

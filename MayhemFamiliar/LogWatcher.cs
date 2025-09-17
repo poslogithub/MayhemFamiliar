@@ -1,4 +1,5 @@
 ﻿using MayhemFamiliar.QueueManager;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -64,14 +65,14 @@ namespace MayhemFamiliar
                     // ドラフト
                     if (line.StartsWith(DraftPackStartsWith))
                     {
-                        jsonBuilder = Regex.Replace(line, DraftPackStartPattern, "");
-                        JsonQueue.Queue.Enqueue(jsonBuilder);
+                        jsonBuilder = Regex.Replace(line, DraftPackStartPattern, "");   // ログの先頭部分（JSONでない箇所）を削除
+                        Enqueue(jsonBuilder);
                         continue;
                     }
                     else if (line.StartsWith(DraftPickStartsWith))
                     {
-                        jsonBuilder = Regex.Replace(line, DraftPickStartPattern, "");
-                        JsonQueue.Queue.Enqueue(jsonBuilder);
+                        jsonBuilder = Regex.Replace(line, DraftPickStartPattern, "");   // ログの先頭部分（JSONでない箇所）を削除
+                        Enqueue(jsonBuilder);
                         continue;
                     }
 
@@ -79,7 +80,7 @@ namespace MayhemFamiliar
                     if (line.StartsWith("{") && line.EndsWith("}"))
                     {
                         // 単一行JSON
-                        JsonQueue.Queue.Enqueue(line);
+                        Enqueue(line);
                         continue;
                     }
                     else if (line.StartsWith("{"))
@@ -95,7 +96,7 @@ namespace MayhemFamiliar
                         if (line == "}")
                         {
                             // 複数行JSONの終了
-                            JsonQueue.Queue.Enqueue(jsonBuilder);
+                            Enqueue(jsonBuilder);
                             jsonBuilder = "";
                         }
                         continue;
@@ -107,6 +108,21 @@ namespace MayhemFamiliar
             {
                 Logger.Instance.Log($"{this.GetType().Name}: ログ読み込みで例外が発生");
                 Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}");
+            }
+        }
+        private Boolean Enqueue(string jsonString)
+        {
+            try
+            {
+                JObject json = JObject.Parse(jsonString);
+                JsonQueue.Queue.Enqueue(json);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Log($"{this.GetType().Name}: JSONのパースに失敗: {jsonString}");
+                Logger.Instance.Log($"{this.GetType().Name}: {ex.Message}");
+                return false;
             }
         }
     }
