@@ -4,8 +4,14 @@
 
 これは何？
 ---------
-MTG Arenaの対戦内容を実況してくれます。
-音声合成エンジンとして「Microsoft Speech API（SAPI）」「VOICEVOX」「AssistantSeika」に対応しています。
+MTG Arenaの対戦内容を実況してくれます。<br />
+音声合成エンジンとして「Microsoft Speech API（SAPI）」「VOICEVOX」「AssistantSeika」に対応しています。<br />
+
+ダウンロード
+------
+下記リンクのAssetsからMayhemFamiliar.zipをダウンロードしてください。<br />
+https://github.com/poslogithub/MayhemFamiliar/releases/latest<br />
+zipファイルを展開すれば、そのまま使えます。<br />
 
 使い方
 ------
@@ -30,7 +36,7 @@ LICENSE ファイルを参照してください。
 X（旧Twitter）: https://x.com/poslog
 
 
-MayhemFamiliarはファンコンテンツ・ポリシーに沿った非公式のファンコンテンツです。
-ウィザーズ社の認可/許諾は得ていません。
-題材の一部に、ウィザーズ・オブ・ザ・コースト社の財産を含んでいます。
-©Wizards of the Coast LLC.
+MayhemFamiliarはファンコンテンツ・ポリシーに沿った非公式のファンコンテンツです。<br />
+ウィザーズ社の認可/許諾は得ていません。<br />
+題材の一部に、ウィザーズ・オブ・ザ・コースト社の財産を含んでいます。<br />
+©Wizards of the Coast LLC.<br />
